@@ -44,3 +44,6 @@ docs-site/.vitepress/cache/
 *.tmp
 *.temp
 
+# Build info (generated at build time, must not be committed)
+frontend/src/build-info.json
+
