@@ -328,6 +328,8 @@ cd ..
 
 # Frontend: Install dependencies and build
 cd frontend
+# Remove old build-info.json to ensure fresh timestamp generation
+rm -f src/build-info.json
 npm install
 npm run build
 cd ..
