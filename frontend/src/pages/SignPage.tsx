@@ -310,50 +310,22 @@ export default function SignPage() {
                     </div>
                   )}
                   
-                  {/* Mobile Fullscreen PDF Viewer Modal - No header, only controls */}
+                  {/* Mobile Fullscreen PDF Viewer Modal - Adobe Reader Light style */}
                   {typeof window !== 'undefined' && window.innerWidth < 768 && showPdfViewer && (
-                    <div className="fixed inset-0 z-[200] bg-white flex flex-col">
-                      {/* Floating controls: + - and X */}
-                      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                        {/* Zoom controls */}
-                        <div className="bg-black/70 backdrop-blur-sm rounded-xl p-2 flex items-center gap-2 shadow-2xl">
-                          <button
-                            onClick={() => {
-                              // Zoom out - handled by PDFViewer component
-                              const event = new CustomEvent('pdfZoomOut');
-                              window.dispatchEvent(event);
-                            }}
-                            className="w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-lg font-bold text-xl flex items-center justify-center transition-colors"
-                            aria-label="Zoom out"
-                          >
-                            −
-                          </button>
-                          <button
-                            onClick={() => {
-                              // Zoom in - handled by PDFViewer component
-                              const event = new CustomEvent('pdfZoomIn');
-                              window.dispatchEvent(event);
-                            }}
-                            className="w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-lg font-bold text-xl flex items-center justify-center transition-colors"
-                            aria-label="Zoom in"
-                          >
-                            +
-                          </button>
-                        </div>
-                        {/* Close button */}
-                        <button
-                          onClick={() => setShowPdfViewer(false)}
-                          className="w-10 h-10 bg-red-500/90 hover:bg-red-600 text-white rounded-lg flex items-center justify-center transition-colors shadow-2xl"
-                          aria-label="Close"
-                        >
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
+                    <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+                      {/* Close button - top left, minimal */}
+                      <button
+                        onClick={() => setShowPdfViewer(false)}
+                        className="absolute top-2 left-2 z-50 w-10 h-10 bg-black/70 hover:bg-black/90 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg backdrop-blur-sm"
+                        aria-label="Close"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                       
-                      {/* Fullscreen PDF Viewer */}
-                      <div className="flex-1 overflow-hidden relative">
+                      {/* Fullscreen PDF Viewer - fills entire screen */}
+                      <div className="flex-1 overflow-hidden relative w-full h-full">
                         <PDFViewer 
                           pdfUrl={session.pdfViewUrl} 
                           readOnly={true}

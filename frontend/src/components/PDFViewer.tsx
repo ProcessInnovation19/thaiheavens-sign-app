@@ -486,15 +486,68 @@ export default function PDFViewer({
   // Detect if mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   
-  // Fullscreen mode: no controls, PDF fills screen
+  // Fullscreen mode: Adobe Reader Light style - minimal controls, PDF fills screen
   if (fullscreen && isMobile) {
     return (
-      <div className="w-full h-full relative flex items-center justify-center" style={{ height: '100%', width: '100%' }}>
+      <div className="w-full h-full relative flex items-center justify-center bg-black" style={{ height: '100%', width: '100%' }}>
+        {/* Minimal floating controls - top right */}
+        <div className="absolute top-2 right-2 z-50 flex flex-col gap-2">
+          {/* Page counter - minimal */}
+          <div className="bg-black/70 backdrop-blur-sm rounded-lg px-3 py-1.5 text-white text-xs font-semibold shadow-lg">
+            {currentPage} / {numPages}
+          </div>
+          
+          {/* Zoom controls - compact */}
+          {readOnly && (
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-1 flex flex-col gap-1 shadow-lg">
+              <button
+                onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
+                className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded text-sm font-bold flex items-center justify-center transition-colors"
+                aria-label="Zoom in"
+              >
+                +
+              </button>
+              <div className="px-2 py-1 text-white text-xs font-semibold text-center min-w-[40px]">
+                {Math.round(zoom * 100)}%
+              </div>
+              <button
+                onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
+                className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded text-sm font-bold flex items-center justify-center transition-colors"
+                aria-label="Zoom out"
+              >
+                −
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* Page navigation - bottom center, minimal */}
+        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-3 shadow-lg">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1 || loading}
+              className="w-8 h-8 bg-white/20 hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-full font-bold text-sm flex items-center justify-center transition-colors"
+              aria-label="Previous page"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
+              disabled={currentPage === numPages || loading}
+              className="w-8 h-8 bg-white/20 hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-full font-bold text-sm flex items-center justify-center transition-colors"
+              aria-label="Next page"
+            >
+              →
+            </button>
+          </div>
+        </div>
+        
         <div 
           ref={containerRef}
-          className="flex justify-center bg-slate-100 rounded-lg border border-slate-200 relative flex-1 h-full overflow-hidden" 
+          className="flex justify-center relative flex-1 h-full w-full overflow-hidden" 
           style={{ 
-            cursor: isPanning ? 'grabbing' : 'grab',
+            cursor: isPanning ? 'grabbing' : (isPinching ? 'zoom-in' : 'grab'),
             touchAction: 'none'
           }}
           onMouseDown={(e) => {
@@ -556,7 +609,7 @@ export default function PDFViewer({
           onTouchMove={(e) => {
             if (readOnly) {
               if (isPinching && pinchStart && e.touches.length === 2) {
-                // Pinch-to-zoom
+                // Improved pinch-to-zoom with better centering
                 e.preventDefault();
                 const touch1 = e.touches[0];
                 const touch2 = e.touches[1];
@@ -567,18 +620,28 @@ export default function PDFViewer({
                 
                 const scale = distance / pinchStart.distance;
                 const newZoom = Math.max(0.5, Math.min(4, pinchStart.zoom * scale));
-                setZoom(newZoom);
                 
-                // Adjust pan to zoom towards the center of the pinch
-                const centerX = (touch1.clientX + touch2.clientX) / 2;
-                const centerY = (touch1.clientY + touch2.clientY) / 2;
-                const deltaX = centerX - pinchStart.center.x;
-                const deltaY = centerY - pinchStart.center.y;
-                
-                setPanOffset({
-                  x: panOffset.x + deltaX * (1 - scale),
-                  y: panOffset.y + deltaY * (1 - scale),
-                });
+                // Calculate center of pinch in container coordinates
+                if (containerRef.current) {
+                  const rect = containerRef.current.getBoundingClientRect();
+                  const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+                  const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+                  const startCenterX = pinchStart.center.x - rect.left;
+                  const startCenterY = pinchStart.center.y - rect.top;
+                  
+                  // Zoom towards the pinch center point
+                  const zoomChange = newZoom / pinchStart.zoom;
+                  const newPanX = centerX - (centerX - panOffset.x) * zoomChange;
+                  const newPanY = centerY - (centerY - panOffset.y) * zoomChange;
+                  
+                  setZoom(newZoom);
+                  setPanOffset({
+                    x: newPanX,
+                    y: newPanY,
+                  });
+                } else {
+                  setZoom(newZoom);
+                }
               } else if (isPanning && panStart && e.touches.length === 1) {
                 // Single touch pan
                 e.preventDefault();
