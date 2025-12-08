@@ -294,7 +294,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src={`/images/logo.png?v=${Date.now()}`}
+                src={`${typeof window !== 'undefined' ? window.location.origin : ''}/images/logo.png?v=${Date.now()}`}
                 alt="Thai Heavens" 
                 className="h-20 w-auto object-contain"
                 style={{ maxHeight: '80px' }}
