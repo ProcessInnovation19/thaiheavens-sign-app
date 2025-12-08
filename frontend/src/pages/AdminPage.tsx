@@ -294,16 +294,18 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src={`${typeof window !== 'undefined' ? window.location.origin : ''}/images/logo.png?v=${Date.now()}`}
+                src={`${typeof window !== 'undefined' ? window.location.origin : ''}/images/logo.png?v=${(typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : Date.now().toString())}`}
                 alt="Thai Heavens" 
                 className="h-20 w-auto object-contain"
                 style={{ maxHeight: '80px' }}
+                key={`logo-${typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : Date.now()}`}
                 onError={(e) => {
                   // Try fallback URL if local file doesn't exist
                   const img = e.target as HTMLImageElement;
                   const currentSrc = img.src;
+                  const buildTimestamp = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : Date.now().toString();
                   if (!currentSrc.includes('thaiheavens.com')) {
-                    img.src = `https://thaiheavens.com/logo.png?v=${Date.now()}`;
+                    img.src = `https://thaiheavens.com/logo.png?v=${buildTimestamp}`;
                   } else {
                     img.style.display = 'none';
                   }

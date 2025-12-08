@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 import type { Plugin } from 'vite'
 
+// Generate build timestamp
+const BUILD_TIMESTAMP = Date.now().toString()
+
 // Plugin to serve docs/index.html at /docs/
 function serveDocsPlugin(): Plugin {
   return {
@@ -28,6 +31,9 @@ function serveDocsPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), serveDocsPlugin()],
+  define: {
+    '__BUILD_TIMESTAMP__': JSON.stringify(BUILD_TIMESTAMP),
+  },
   server: {
     host: '0.0.0.0', // Listen on all network interfaces
     port: 5173,
