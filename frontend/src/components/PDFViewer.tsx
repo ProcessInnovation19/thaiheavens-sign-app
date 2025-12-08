@@ -461,68 +461,134 @@ export default function PDFViewer({
     );
   }
 
+  // Detect if mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-center gap-2 mb-3 bg-slate-50 rounded-lg p-2 border border-slate-200 relative min-h-[50px]">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl z-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-200 border-t-blue-600"></div>
+    <div className="w-full relative">
+      {/* Desktop: Controls above PDF */}
+      {!isMobile && (
+        <>
+          <div className="flex items-center justify-center gap-2 mb-3 bg-slate-50 rounded-lg p-2 border border-slate-200 relative min-h-[50px]">
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl z-10">
+                <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-200 border-t-blue-600"></div>
+              </div>
+            )}
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1 || loading}
+              className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
+            >
+              ← Previous
+            </button>
+            <div className="px-6 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-900 shadow-sm">
+              Page {currentPage} of {numPages}
+            </div>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
+              disabled={currentPage === numPages || loading}
+              className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
+            >
+              Next →
+            </button>
           </div>
-        )}
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          disabled={currentPage === 1 || loading}
-          className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
-        >
-          ← Previous
-        </button>
-        <div className="px-6 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-900 shadow-sm">
-          Page {currentPage} of {numPages}
-        </div>
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
-          disabled={currentPage === numPages || loading}
-          className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
-        >
-          Next →
-        </button>
-      </div>
+          
+          {/* Zoom Controls - Only show in readOnly mode */}
+          {readOnly && (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <button
+                onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
+                className="px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
+                aria-label="Zoom out"
+              >
+                −
+              </button>
+              <span className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 shadow-sm min-w-[80px] text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
+                className="px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
+                aria-label="Zoom in"
+              >
+                +
+              </button>
+              <button
+                onClick={() => {
+                  setZoom(1.5);
+                  setPanOffset({ x: 0, y: 0 });
+                }}
+                className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
+              >
+                Reset
+              </button>
+            </div>
+          )}
+        </>
+      )}
       
-      {/* Zoom Controls - Only show in readOnly mode */}
-      {readOnly && (
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <button
-            onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
-            className="px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
-            aria-label="Zoom out"
-          >
-            −
-          </button>
-          <span className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 shadow-sm min-w-[80px] text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
-            className="px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
-            aria-label="Zoom in"
-          >
-            +
-          </button>
-          <button
-            onClick={() => {
-              setZoom(1.5);
-              setPanOffset({ x: 0, y: 0 });
-            }}
-            className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
-          >
-            Reset
-          </button>
+      {/* Mobile: Floating controls overlay on PDF */}
+      {isMobile && readOnly && (
+        <div className="absolute top-2 left-2 right-2 z-50 flex flex-wrap items-center justify-center gap-2 pointer-events-none">
+          {/* Page Navigation */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl p-2 shadow-lg border border-slate-200 flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1 || loading}
+              className="w-10 h-10 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center shadow-md"
+              aria-label="Previous page"
+            >
+              ←
+            </button>
+            <div className="px-4 py-2 bg-slate-100 rounded-lg font-bold text-slate-900 text-sm min-w-[80px] text-center">
+              {currentPage}/{numPages}
+            </div>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
+              disabled={currentPage === numPages || loading}
+              className="w-10 h-10 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center shadow-md"
+              aria-label="Next page"
+            >
+              →
+            </button>
+          </div>
+          
+          {/* Zoom Controls */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl p-2 shadow-lg border border-slate-200 flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
+              className="w-10 h-10 bg-slate-500 text-white rounded-lg font-bold hover:bg-slate-600 transition-all duration-200 flex items-center justify-center shadow-md"
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+            <span className="px-3 py-2 bg-slate-100 rounded-lg font-semibold text-slate-900 text-sm min-w-[60px] text-center">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
+              className="w-10 h-10 bg-slate-500 text-white rounded-lg font-bold hover:bg-slate-600 transition-all duration-200 flex items-center justify-center shadow-md"
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+            <button
+              onClick={() => {
+                setZoom(1.5);
+                setPanOffset({ x: 0, y: 0 });
+              }}
+              className="px-3 py-2 bg-blue-500 text-white rounded-lg text-xs font-semibold hover:bg-blue-600 transition-all duration-200 shadow-md"
+            >
+              Reset
+            </button>
+          </div>
         </div>
       )}
       
       <div 
         ref={containerRef}
-        className={`flex justify-center bg-slate-100 rounded-lg border border-slate-200 relative ${readOnly ? 'overflow-auto' : 'p-1 sm:p-2'} ${readOnly ? 'h-[70vh]' : ''}`}
+        className={`flex justify-center bg-slate-100 rounded-lg border border-slate-200 relative ${readOnly ? 'overflow-auto' : 'p-1 sm:p-2'} ${readOnly ? (isMobile ? 'h-screen' : 'h-[70vh]') : ''}`}
         style={readOnly ? { 
           cursor: isPanning ? 'grabbing' : 'grab',
           touchAction: 'none'

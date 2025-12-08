@@ -23,6 +23,7 @@ export default function SignPage() {
   const [signedSessionId, setSignedSessionId] = useState<string | null>(null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -442,13 +443,77 @@ export default function SignPage() {
               </div>
               
               {signedPdfUrl && (
-                <div className="mb-4 -mx-2 sm:-mx-4">
-                  <PDFViewer 
-                    pdfUrl={signedPdfUrl} 
-                    readOnly={true}
-                    selectedPage={session.page + 1} // session.page is 0-indexed, PDFViewer expects 1-indexed
-                  />
-                </div>
+                <>
+                  {/* Mobile: Card that opens fullscreen viewer */}
+                  {typeof window !== 'undefined' && window.innerWidth < 768 ? (
+                    <div className="mb-4">
+                      <div 
+                        onClick={() => setShowPdfViewer(true)}
+                        className="bg-gradient-to-br from-slate-50 to-blue-50 border-2 border-slate-200 rounded-xl p-6 cursor-pointer hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-slate-900">Preview Document</h3>
+                              <p className="text-sm text-slate-600">Tap to open fullscreen viewer</p>
+                            </div>
+                          </div>
+                          <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                          </svg>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border border-slate-200">
+                          <PDFViewer 
+                            pdfUrl={signedPdfUrl} 
+                            readOnly={true}
+                            selectedPage={session.page + 1}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Desktop: Normal view */
+                    <div className="mb-4 -mx-2 sm:-mx-4">
+                      <PDFViewer 
+                        pdfUrl={signedPdfUrl} 
+                        readOnly={true}
+                        selectedPage={session.page + 1}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Mobile Fullscreen PDF Viewer Modal */}
+                  {typeof window !== 'undefined' && window.innerWidth < 768 && showPdfViewer && (
+                    <div className="fixed inset-0 z-[200] bg-white flex flex-col">
+                      {/* Header with close button */}
+                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 flex items-center justify-between shadow-lg">
+                        <h2 className="text-lg font-bold">Document Preview</h2>
+                        <button
+                          onClick={() => setShowPdfViewer(false)}
+                          className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-colors"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      {/* Fullscreen PDF Viewer */}
+                      <div className="flex-1 overflow-hidden relative">
+                        <PDFViewer 
+                          pdfUrl={signedPdfUrl} 
+                          readOnly={true}
+                          selectedPage={session.page + 1}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               
               <div className="flex flex-col sm:flex-row gap-3">
