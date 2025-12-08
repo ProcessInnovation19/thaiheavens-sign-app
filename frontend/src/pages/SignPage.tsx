@@ -53,6 +53,24 @@ export default function SignPage() {
     };
   }, []);
 
+  // Request fullscreen when signature modal opens on mobile
+  useEffect(() => {
+    if (showSignatureModal && typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {
+          // Ignore errors if fullscreen is not available
+        });
+      }
+    }
+    
+    // Exit fullscreen when modal closes
+    return () => {
+      if (!showSignatureModal && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  }, [showSignatureModal]);
+
   const loadSession = async () => {
     if (!token) return;
 
