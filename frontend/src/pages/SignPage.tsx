@@ -20,6 +20,7 @@ export default function SignPage() {
   const [loading, setLoading] = useState(false);
   const [signedPdfUrl, setSignedPdfUrl] = useState<string | null>(null);
   const [signedSessionId, setSignedSessionId] = useState<string | null>(null);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -152,13 +153,31 @@ export default function SignPage() {
       <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4 max-w-4xl">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Digital Signature
-              </h1>
-              {session.guestName && (
-                <p className="text-sm text-slate-600 mt-0.5">Hello, {session.guestName}</p>
-              )}
+            <div className="flex items-center gap-3">
+              <img 
+                src="/images/logo.png" 
+                alt="Thai Heavens" 
+                className="h-20 w-auto object-contain"
+                style={{ maxHeight: '80px' }}
+                onError={(e) => {
+                  // Try fallback URL if local file doesn't exist
+                  const img = e.target as HTMLImageElement;
+                  const currentSrc = img.src;
+                  if (!currentSrc.includes('thaiheavens.com')) {
+                    img.src = 'https://thaiheavens.com/logo.png';
+                  } else {
+                    img.style.display = 'none';
+                  }
+                }}
+              />
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Digital Signature
+                </h1>
+                {session.guestName && (
+                  <p className="text-sm text-slate-600 mt-0.5">Hello, {session.guestName}</p>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -168,7 +187,7 @@ export default function SignPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-4xl">
         {/* Error Alert */}
         {error && (
           <div className="mb-6 animate-slide-up">
@@ -203,13 +222,16 @@ export default function SignPage() {
               </div>
               
               {session.pdfViewUrl && (
-                <div className="mb-6">
+                <div className="mb-4 -mx-2 sm:-mx-4">
                   <PDFViewer pdfUrl={session.pdfViewUrl} readOnly={true} />
                 </div>
               )}
               
               <button
-                onClick={() => setStep('sign')}
+                onClick={() => {
+                  setShowSignatureModal(true);
+                  setStep('sign');
+                }}
                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 disabled={loading}
               >
@@ -219,42 +241,70 @@ export default function SignPage() {
           </div>
         )}
 
-        {/* Step: Sign */}
-        {step === 'sign' && (
-          <div className="animate-fade-in">
-            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-soft border border-white/50 p-6 md:p-8">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl mb-4 shadow-lg">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Step: Sign - Fullscreen Modal */}
+        {step === 'sign' && showSignatureModal && (
+          <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-4 flex items-center justify-between shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Sign Below</h2>
-                <p className="text-slate-600">Use your finger or mouse to draw your signature</p>
+                <div>
+                  <h2 className="text-xl font-bold">Sign Document</h2>
+                  <p className="text-sm text-blue-100">Use your finger or mouse to draw your signature</p>
+                </div>
               </div>
-              
-              <div className="mb-6">
+            </div>
+
+            {/* Signature Canvas - Fullscreen */}
+            <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 bg-slate-50 overflow-hidden">
+              <div className="w-full h-full max-w-6xl flex flex-col">
                 <SignaturePadComponent
                   onSignatureChange={setSignatureDataUrl}
-                  height={300}
+                  height={typeof window !== 'undefined' ? Math.max(window.innerHeight - 180, 400) : 600} // Full height minus header/footer, min 400px
                 />
               </div>
-              
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-white border-t border-slate-200 px-4 py-4 flex gap-3 shadow-lg">
               <button
-                onClick={handleApplySignature}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+                onClick={() => {
+                  setShowSignatureModal(false);
+                  setSignatureDataUrl('');
+                }}
+                className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-all duration-200 flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (signatureDataUrl) {
+                    setShowSignatureModal(false);
+                    await handleApplySignature();
+                  }
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg flex-1 flex items-center justify-center gap-2"
                 disabled={!signatureDataUrl || loading}
               >
                 {loading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Applying Signature...
-                  </span>
+                    Applying...
+                  </>
                 ) : (
-                  'Apply Signature'
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Save Signature
+                  </>
                 )}
               </button>
             </div>
@@ -277,7 +327,7 @@ export default function SignPage() {
               </div>
               
               {signedPdfUrl && (
-                <div className="mb-6">
+                <div className="mb-4 -mx-2 sm:-mx-4">
                   <PDFViewer 
                     pdfUrl={signedPdfUrl} 
                     readOnly={true}

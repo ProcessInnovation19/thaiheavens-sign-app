@@ -452,7 +452,7 @@ export default function PDFViewer({
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-center gap-3 mb-6 bg-slate-50 rounded-xl p-4 border border-slate-200 relative min-h-[60px]">
+      <div className="flex items-center justify-center gap-2 mb-3 bg-slate-50 rounded-lg p-2 border border-slate-200 relative min-h-[50px]">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl z-10">
             <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-200 border-t-blue-600"></div>
@@ -477,7 +477,7 @@ export default function PDFViewer({
         </button>
       </div>
       
-      <div className="flex justify-center bg-slate-100 rounded-xl p-4 border-2 border-slate-200 overflow-x-auto relative">
+      <div className="flex justify-center bg-slate-100 rounded-lg p-1 sm:p-2 border border-slate-200 overflow-x-auto relative">
         <div className="relative">
           <canvas
             ref={canvasRef}

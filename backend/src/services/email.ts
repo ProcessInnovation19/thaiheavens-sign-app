@@ -87,7 +87,7 @@ export async function sendSigningLinkEmail(
 ): Promise<void> {
   const subject = 'Digital Signature Request';
   
-  // Extract base URL from signing URL to use for logo
+  // Extract base URL from signing URL to use for logo - use absolute URL
   let logoSrc: string;
   try {
     const url = new URL(signingUrl);
@@ -96,6 +96,11 @@ export async function sendSigningLinkEmail(
     // Fallback to environment variable or default
     const baseUrl = process.env.BASE_URL || 'https://sign.process-innovation.it';
     logoSrc = `${baseUrl}/images/logo.png`;
+  }
+  
+  // Ensure absolute URL (some email clients require this)
+  if (!logoSrc.startsWith('http://') && !logoSrc.startsWith('https://')) {
+    logoSrc = `https://sign.process-innovation.it${logoSrc}`;
   }
   
   const html = `<!DOCTYPE html>
@@ -167,7 +172,7 @@ export async function sendSigningLinkEmail(
 <body>
   <div class="container">
     <div class="header">
-      <img src="${logoSrc}" alt="Thai Heavens" class="logo" width="200" height="auto" />
+      <img src="${logoSrc}" alt="Thai Heavens" class="logo" width="200" height="auto" style="max-width: 200px; height: auto; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto; border: 0;" />
       <h1 style="color: #2563eb; margin-top: 0;">Digital Signature Request</h1>
     </div>
     

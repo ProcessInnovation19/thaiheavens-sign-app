@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import SignaturePad from 'signature_pad';
 
 interface SignaturePadComponentProps {
@@ -12,6 +12,7 @@ export default function SignaturePadComponent({
 }: SignaturePadComponentProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const signaturePadRef = useRef<SignaturePad | null>(null);
+  const [isEmpty, setIsEmpty] = useState(true);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -23,13 +24,10 @@ export default function SignaturePadComponent({
     });
     
     // Draw horizontal guide line at 2/3 from top (towards bottom)
-    // The line should be at 2/3 of the visual canvas height, matching the red box position
     const drawGuideLine = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
-      // Use offsetHeight (visual height) instead of canvas.height (internal resolution)
-      // The context is already scaled by devicePixelRatio, so we use visual coordinates
       const visualHeight = canvas.offsetHeight;
       const guideY = (visualHeight * 2) / 3;
       
@@ -59,6 +57,8 @@ export default function SignaturePadComponent({
       signaturePadRef.current.fromData(data);
       // Redraw guide line after resize
       drawGuideLine();
+      // Update empty state
+      setIsEmpty(signaturePadRef.current.isEmpty());
     };
 
     window.addEventListener('resize', handleResize);
@@ -70,8 +70,60 @@ export default function SignaturePadComponent({
     };
   }, []);
 
+  const handleChange = () => {
+    if (signaturePadRef.current && onSignatureChange && canvasRef.current) {
+      // Export as PNG with transparency
+      const dataUrl = signaturePadRef.current.toDataURL('image/png');
+      onSignatureChange(dataUrl);
+      
+      // Update empty state
+      setIsEmpty(signaturePadRef.current.isEmpty());
+      
+      // Redraw guide line AFTER exporting (for display only)
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const visualHeight = canvas.offsetHeight;
+        const guideY = (visualHeight * 2) / 3;
+        
+        ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, guideY);
+        ctx.lineTo(canvas.offsetWidth, guideY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (signaturePadRef.current) {
+      const checkEmpty = () => {
+        if (signaturePadRef.current) {
+          setIsEmpty(signaturePadRef.current.isEmpty());
+        }
+      };
+      
+      signaturePadRef.current.addEventListener('beginStroke', () => {
+        setIsEmpty(false);
+      });
+      signaturePadRef.current.addEventListener('endStroke', () => {
+        checkEmpty();
+        handleChange();
+      });
+      
+      return () => {
+        signaturePadRef.current?.removeEventListener('beginStroke', () => {});
+        signaturePadRef.current?.removeEventListener('endStroke', () => {});
+      };
+    }
+  }, [onSignatureChange]);
+
   const handleClear = () => {
     signaturePadRef.current?.clear();
+    setIsEmpty(true);
     if (onSignatureChange) {
       onSignatureChange('');
     }
@@ -95,56 +147,31 @@ export default function SignaturePadComponent({
     }
   };
 
-  const handleChange = () => {
-    if (signaturePadRef.current && onSignatureChange && canvasRef.current) {
-      // Export as PNG with transparency (SignaturePad with transparent background already handles this)
-      // NOTE: Do NOT redraw guide line before export - it should only be visible on screen, not in the exported image
-      const dataUrl = signaturePadRef.current.toDataURL('image/png');
-      onSignatureChange(dataUrl);
-      
-      // Redraw guide line AFTER exporting (for display only)
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        const visualHeight = canvas.offsetHeight;
-        const guideY = (visualHeight * 2) / 3;
-        
-        ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(0, guideY);
-        ctx.lineTo(canvas.offsetWidth, guideY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (signaturePadRef.current) {
-      signaturePadRef.current.addEventListener('endStroke', handleChange);
-      return () => {
-        signaturePadRef.current?.removeEventListener('endStroke', handleChange);
-      };
-    }
-  }, [onSignatureChange]);
-
   return (
-    <div className="w-full flex flex-col items-center">
-      <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg border-2 border-slate-300 overflow-hidden">
+    <div className="w-full h-full flex flex-col items-center">
+      <div className="w-full h-full bg-white rounded-xl shadow-lg border-2 border-slate-300 overflow-hidden relative">
         <div className="bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-2 border-b border-slate-200">
           <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Signature Canvas</p>
         </div>
-        <canvas
-          ref={canvasRef}
-          className="w-full"
-          style={{
-            height: `${height}px`,
-            touchAction: 'none',
-            display: 'block',
-          }}
-        />
+        <div className="relative w-full h-full" style={{ height: `${height}px` }}>
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full absolute inset-0"
+            style={{
+              height: '100%',
+              touchAction: 'none',
+              display: 'block',
+            }}
+          />
+          {isEmpty && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div className="text-center px-4">
+                <p className="text-2xl md:text-3xl font-semibold text-slate-400 mb-2">Click here to sign</p>
+                <p className="text-sm text-slate-400">Use your finger or mouse to draw your signature</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <button
         onClick={handleClear}
