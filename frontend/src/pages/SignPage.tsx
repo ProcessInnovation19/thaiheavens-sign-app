@@ -370,12 +370,6 @@ export default function SignPage() {
                 onClick={() => {
                   setStep('sign');
                   setShowSignatureModal(true);
-                  // Request fullscreen to hide browser URL bar on mobile
-                  if (typeof window !== 'undefined' && window.innerWidth < 768 && document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen().catch(() => {
-                      // Ignore errors if fullscreen is not available
-                    });
-                  }
                 }}
                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 disabled={loading}
