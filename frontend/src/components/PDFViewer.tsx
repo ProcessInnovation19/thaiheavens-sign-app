@@ -33,6 +33,12 @@ export default function PDFViewer({
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [resizeCorner, setResizeCorner] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | null>(null);
+  // Zoom and pan for readOnly mode
+  const [zoom, setZoom] = useState(1.5);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (selectedPage) {
@@ -63,7 +69,7 @@ export default function PDFViewer({
 
         const page = await pdf.getPage(currentPage);
         pageRef.current = page;
-        const viewport = page.getViewport({ scale: 1.5 });
+        const viewport = page.getViewport({ scale: zoom });
         viewportRef.current = viewport;
         
         // Notify parent component about viewport size
@@ -120,11 +126,12 @@ export default function PDFViewer({
         renderTaskRef.current.cancel();
       }
     };
-  }, [pdfUrl, currentPage]);
+  }, [pdfUrl, currentPage, zoom]);
 
-  // Redraw PDF when page changes (without box, box is now HTML overlay)
+  // Redraw PDF when page changes or zoom changes
   useEffect(() => {
-    if (!canvasRef.current || readOnly || loading || !pdfRef.current) return;
+    if (!canvasRef.current || loading || !pdfRef.current) return;
+    if (!readOnly && selectedPosition) return; // Don't redraw if positioning signature
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -133,7 +140,11 @@ export default function PDFViewer({
     const redrawPDF = async () => {
       try {
         const page = await pdfRef.current.getPage(currentPage);
-        const viewport = page.getViewport({ scale: 1.5 });
+        const viewport = page.getViewport({ scale: zoom });
+        viewportRef.current = viewport;
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
 
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -152,7 +163,7 @@ export default function PDFViewer({
     };
 
     redrawPDF();
-  }, [currentPage, readOnly, loading]);
+  }, [currentPage, readOnly, loading, zoom, selectedPosition]);
 
   // Convert canvas coordinates to PDF coordinates
   const canvasToPdf = (canvasX: number, canvasY: number, canvasWidth: number, canvasHeight: number) => {
@@ -477,8 +488,102 @@ export default function PDFViewer({
         </button>
       </div>
       
-      <div className="flex justify-center bg-slate-100 rounded-lg p-1 sm:p-2 border border-slate-200 overflow-x-auto relative">
-        <div className="relative">
+      {/* Zoom Controls - Only show in readOnly mode */}
+      {readOnly && (
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <button
+            onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
+            className="px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <span className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 shadow-sm min-w-[80px] text-center">
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
+            className="px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            onClick={() => {
+              setZoom(1.5);
+              setPanOffset({ x: 0, y: 0 });
+            }}
+            className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
+          >
+            Reset
+          </button>
+        </div>
+      )}
+      
+      <div 
+        ref={containerRef}
+        className={`flex justify-center bg-slate-100 rounded-lg border border-slate-200 relative ${readOnly ? 'overflow-auto' : 'p-1 sm:p-2'} ${readOnly ? 'h-[70vh]' : ''}`}
+        style={readOnly ? { 
+          cursor: isPanning ? 'grabbing' : 'grab',
+          touchAction: 'none'
+        } : {}}
+        onMouseDown={(e) => {
+          if (readOnly && e.button === 0) {
+            setIsPanning(true);
+            setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+          }
+        }}
+        onMouseMove={(e) => {
+          if (readOnly && isPanning && panStart) {
+            setPanOffset({
+              x: e.clientX - panStart.x,
+              y: e.clientY - panStart.y,
+            });
+          }
+        }}
+        onMouseUp={() => {
+          if (readOnly) {
+            setIsPanning(false);
+            setPanStart(null);
+          }
+        }}
+        onMouseLeave={() => {
+          if (readOnly) {
+            setIsPanning(false);
+            setPanStart(null);
+          }
+        }}
+        onTouchStart={(e) => {
+          if (readOnly && e.touches.length === 1) {
+            const touch = e.touches[0];
+            setIsPanning(true);
+            setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+          }
+        }}
+        onTouchMove={(e) => {
+          if (readOnly && isPanning && panStart && e.touches.length === 1) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            setPanOffset({
+              x: touch.clientX - panStart.x,
+              y: touch.clientY - panStart.y,
+            });
+          }
+        }}
+        onTouchEnd={() => {
+          if (readOnly) {
+            setIsPanning(false);
+            setPanStart(null);
+          }
+        }}
+      >
+        <div 
+          className="relative"
+          style={readOnly ? {
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+            transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+          } : {}}
+        >
           <canvas
             ref={canvasRef}
             onClick={handleCanvasClick}
@@ -489,10 +594,12 @@ export default function PDFViewer({
                 setTimeout(() => setCursorPosition(null), 500);
               }
             }}
-            className={`max-w-full h-auto rounded-lg shadow-lg transition-all ${readOnly ? 'cursor-default' : 'hover:shadow-xl'}`}
+            className={`${readOnly ? 'max-w-none' : 'max-w-full'} h-auto rounded-lg shadow-lg transition-all ${readOnly ? '' : 'hover:shadow-xl'}`}
             style={!readOnly ? { 
               cursor: 'none' // Hide default cursor, we'll use custom one
-            } : {}}
+            } : {
+              cursor: isPanning ? 'grabbing' : 'grab'
+            }}
             onMouseMove={(e) => {
               if (readOnly || !canvasRef.current) return;
               // Update cursor position for custom rectangle cursor
