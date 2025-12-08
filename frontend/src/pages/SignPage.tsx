@@ -191,10 +191,8 @@ export default function SignPage() {
                     const currentSrc = img.src;
                     console.log('Logo load error, current src:', currentSrc);
                     
-                    // Try absolute URL with current origin first
-                    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sign.process-innovation.it';
+                    // Try thaiheavens.com with cache busting
                     if (!currentSrc.includes('thaiheavens.com')) {
-                      // Try thaiheavens.com with cache busting
                       img.src = `https://thaiheavens.com/logo.png?v=${buildInfo.timestamp}`;
                       console.log('Trying thaiheavens.com logo');
                     } else {
