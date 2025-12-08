@@ -361,164 +361,234 @@ export default function SignPage() {
           </div>
         )}
 
-        {/* Step: Sign - Fullscreen Modal */}
-        {step === 'sign' && showSignatureModal && (
-          <div className="fixed inset-0 z-[100] bg-white flex flex-col">
-            {/* Show rotate message if portrait on mobile - MUST BE VISIBLE */}
-            {!isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex flex-col items-center justify-center z-[110] p-8 text-center">
-                <div className="mb-6" style={{ animation: 'spin 3s linear infinite' }}>
-                  <svg className="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </div>
-                <h2 className="text-3xl font-bold mb-4">Rotate Your Device</h2>
-                <p className="text-xl mb-2 font-semibold">Please rotate your phone to landscape mode</p>
-                <p className="text-lg text-blue-100">to sign the document</p>
-              </div>
-            )}
-
-            {/* Modal Header - Hide in mobile landscape, show only on desktop */}
-            {(!isLandscape || window.innerWidth >= 768) && (
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 sm:py-4 flex items-center justify-between shadow-lg">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-bold">Sign Document</h2>
-                    <p className="text-xs sm:text-sm text-blue-100 hidden sm:block">Use your finger or mouse to draw your signature</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Signature Canvas - Fullscreen */}
-            {(isLandscape || window.innerWidth >= 768) && (
-              <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden relative" style={{ height: '100%' }}>
-                {/* Compact header with Clear button in landscape mobile */}
-                {isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
-                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-2 flex items-center justify-between shadow-md z-50 flex-shrink-0">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Step: Sign - Show card when not in modal, modal when clicked */}
+        {step === 'sign' && (
+          <>
+            {/* Mobile Portrait: Show card with Clear button */}
+            {!showSignatureModal && typeof window !== 'undefined' && window.innerWidth < 768 && !isLandscape && (
+              <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
+                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-soft border border-white/50 p-6 md:p-8">
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
-                      <p className="text-xs font-semibold truncate">Sign Document</p>
                     </div>
-                    <button
-                      onClick={() => {
-                        setSignatureDataUrl('');
-                        // Trigger clear in SignaturePad component
-                        const event = new CustomEvent('clearSignature');
-                        window.dispatchEvent(event);
-                      }}
-                      className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1.5 flex-shrink-0"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Clear
-                    </button>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Sign Document</h2>
+                    <p className="text-slate-600">Tap the card below to open the signature canvas</p>
                   </div>
-                )}
-                
-                {/* Signature Canvas - Takes all available space */}
-                <div className="flex-1 flex flex-col items-center justify-center overflow-hidden relative" style={{ minHeight: 0 }}>
-                  <SignaturePadComponent
-                    onSignatureChange={setSignatureDataUrl}
-                    fullscreen={isLandscape && typeof window !== 'undefined' && window.innerWidth < 768}
-                    height={typeof window !== 'undefined' 
-                      ? (isLandscape && window.innerWidth < 768 
-                          ? window.innerHeight - 50  // Full height minus compact header
-                          : window.innerWidth >= 768 
-                            ? Math.max(window.innerHeight - 200, 400)  // Desktop
-                            : Math.max(window.innerHeight - 200, 400))  // Portrait mobile
-                      : 600}
-                  />
-                </div>
-                
-                {/* Instructions and OK button in landscape mobile - MUST BE VISIBLE */}
-                {isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
-                  <div className="absolute bottom-4 left-0 right-0 px-4 z-50 flex-shrink-0">
-                    <div className="bg-black/80 backdrop-blur-sm rounded-xl text-white px-4 py-3 text-center shadow-2xl">
-                      <p className="text-xs font-semibold mb-2">When finished: Rotate to portrait OR tap "Done"</p>
+                  
+                  <div 
+                    onClick={() => {
+                      setShowSignatureModal(true);
+                    }}
+                    className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-base">Open Signature Canvas</h3>
+                          <p className="text-sm text-slate-600">Tap to start signing</p>
+                        </div>
+                      </div>
                       <button
-                        onClick={async () => {
-                          if (signatureDataUrl) {
-                            setShowSignatureModal(false);
-                            await handleApplySignature();
-                          }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSignatureDataUrl('');
+                          const event = new CustomEvent('clearSignature');
+                          window.dispatchEvent(event);
                         }}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-bold text-base shadow-xl hover:from-emerald-700 hover:to-teal-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-                        disabled={!signatureDataUrl || loading}
+                        className="px-3 py-1.5 bg-white/80 hover:bg-white text-slate-700 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
                       >
-                        {loading ? (
-                          <>
-                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Applying...</span>
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span>Done</span>
-                          </>
-                        )}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Clear
                       </button>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
 
-            {/* Modal Footer - Show in portrait or desktop, hide in mobile landscape */}
-            {(!isLandscape || window.innerWidth >= 768) && (
-              <div className="bg-white border-t border-slate-200 px-2 sm:px-4 py-3 sm:py-4 flex gap-2 sm:gap-3 shadow-lg">
-                <button
-                  onClick={() => {
-                    setShowSignatureModal(false);
-                    setSignatureDataUrl('');
-                  }}
-                  className="px-4 sm:px-6 py-2 sm:py-3 bg-slate-100 text-slate-700 rounded-xl text-sm sm:text-base font-semibold hover:bg-slate-200 transition-all duration-200 flex-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    if (signatureDataUrl) {
-                      setShowSignatureModal(false);
-                      await handleApplySignature();
-                    }
-                  }}
-                  className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm sm:text-base font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg flex-1 flex items-center justify-center gap-2"
-                  disabled={!signatureDataUrl || loading}
-                >
-                  {loading ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span className="hidden sm:inline">Applying...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>OK</span>
-                    </>
-                  )}
-                </button>
+            {/* Desktop: Show normal button */}
+            {!showSignatureModal && typeof window !== 'undefined' && window.innerWidth >= 768 && (
+              <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
+                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-soft border border-white/50 p-6 md:p-8 text-center">
+                  <button
+                    onClick={() => {
+                      setShowSignatureModal(true);
+                    }}
+                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    disabled={loading}
+                  >
+                    Open Signature Canvas
+                  </button>
+                </div>
               </div>
             )}
-          </div>
+
+            {/* Fullscreen Modal - Show rotate message if portrait, canvas if landscape */}
+            {showSignatureModal && (
+              <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+                {/* Mobile Portrait: Show rotate message */}
+                {!isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex flex-col items-center justify-center z-[110] p-8 text-center">
+                    <div className="mb-6" style={{ animation: 'spin 3s linear infinite' }}>
+                      <svg className="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </div>
+                    <h2 className="text-3xl font-bold mb-4">Rotate Your Device</h2>
+                    <p className="text-xl mb-2 font-semibold">Please rotate your phone to landscape mode</p>
+                    <p className="text-lg text-blue-100">to sign the document</p>
+                    <button
+                      onClick={() => {
+                        setShowSignatureModal(false);
+                      }}
+                      className="mt-6 px-6 py-3 bg-white/20 hover:bg-white/30 rounded-lg font-semibold transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {/* Mobile Landscape or Desktop: Show canvas only */}
+                {(isLandscape || window.innerWidth >= 768) && (
+                  <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden relative" style={{ height: '100%' }}>
+                    {/* Only X button in top right for mobile landscape */}
+                    {isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
+                      <button
+                        onClick={() => {
+                          setShowSignatureModal(false);
+                          setSignatureDataUrl('');
+                        }}
+                        className="absolute top-4 right-4 z-50 w-10 h-10 bg-red-500/90 hover:bg-red-600 text-white rounded-lg flex items-center justify-center transition-colors shadow-2xl"
+                        aria-label="Close"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                    
+                    {/* Desktop header */}
+                    {typeof window !== 'undefined' && window.innerWidth >= 768 && (
+                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 flex items-center justify-between shadow-md z-50 flex-shrink-0">
+                        <h2 className="text-lg font-bold">Sign Document</h2>
+                        <button
+                          onClick={() => {
+                            setSignatureDataUrl('');
+                            const event = new CustomEvent('clearSignature');
+                            window.dispatchEvent(event);
+                          }}
+                          className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Clear
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Signature Canvas - Always 100% of its natural height, inside screen */}
+                    <div className="flex-1 flex flex-col items-center justify-center overflow-hidden relative w-full" style={{ minHeight: 0, height: '100%' }}>
+                      <SignaturePadComponent
+                        onSignatureChange={setSignatureDataUrl}
+                        fullscreen={true}
+                        height={typeof window !== 'undefined' 
+                          ? (window.innerWidth < 768 
+                              ? window.innerHeight  // Mobile: full screen height
+                              : Math.max(window.innerHeight - 200, 400))  // Desktop
+                          : 600}
+                      />
+                    </div>
+                    
+                    {/* Mobile Landscape: Confirm button at bottom */}
+                    {isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
+                      <div className="absolute bottom-4 left-4 right-4 z-50">
+                        <button
+                          onClick={async () => {
+                            if (signatureDataUrl) {
+                              setShowSignatureModal(false);
+                              await handleApplySignature();
+                            }
+                          }}
+                          className="w-full px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-lg shadow-2xl hover:from-emerald-700 hover:to-teal-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                          disabled={!signatureDataUrl || loading}
+                        >
+                          {loading ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              <span>Applying...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span>Confirm & Close</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+        
+                {/* Desktop Footer */}
+                {typeof window !== 'undefined' && window.innerWidth >= 768 && (
+                  <div className="bg-white border-t border-slate-200 px-4 py-4 flex gap-3 shadow-lg">
+                    <button
+                      onClick={() => {
+                        setShowSignatureModal(false);
+                        setSignatureDataUrl('');
+                      }}
+                      className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-all duration-200 flex-1"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (signatureDataUrl) {
+                          setShowSignatureModal(false);
+                          await handleApplySignature();
+                        }
+                      }}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg flex-1 flex items-center justify-center gap-2"
+                      disabled={!signatureDataUrl || loading}
+                    >
+                      {loading ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Applying...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>OK</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Step: Preview */}
