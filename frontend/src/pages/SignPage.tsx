@@ -179,7 +179,7 @@ export default function SignPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img 
-                  src="https://sign.process-innovation.it/images/logo.png" 
+                  src={`https://sign.process-innovation.it/images/logo.png?v=${Date.now()}`}
                   alt="Thai Heavens" 
                   className="h-16 sm:h-20 w-auto object-contain"
                   style={{ maxHeight: '80px', display: 'block', minHeight: '40px' }}
@@ -191,12 +191,12 @@ export default function SignPage() {
                     
                     // Try local path first, then external
                     if (currentSrc.includes('sign.process-innovation.it')) {
-                      // Try local path
-                      img.src = '/images/logo.png';
+                      // Try local path with cache busting
+                      img.src = `/images/logo.png?v=${Date.now()}`;
                       console.log('Trying local /images/logo.png');
                     } else if (!currentSrc.includes('thaiheavens.com')) {
-                      // Try thaiheavens.com
-                      img.src = 'https://thaiheavens.com/logo.png';
+                      // Try thaiheavens.com with cache busting
+                      img.src = `https://thaiheavens.com/logo.png?v=${Date.now()}`;
                       console.log('Trying thaiheavens.com logo');
                     } else {
                       // All fallbacks failed, hide image

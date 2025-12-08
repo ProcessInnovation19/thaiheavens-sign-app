@@ -294,7 +294,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src="/images/logo.png" 
+                src={`/images/logo.png?v=${Date.now()}`}
                 alt="Thai Heavens" 
                 className="h-20 w-auto object-contain"
                 style={{ maxHeight: '80px' }}
@@ -303,7 +303,7 @@ export default function AdminPage() {
                   const img = e.target as HTMLImageElement;
                   const currentSrc = img.src;
                   if (!currentSrc.includes('thaiheavens.com')) {
-                    img.src = 'https://thaiheavens.com/logo.png';
+                    img.src = `https://thaiheavens.com/logo.png?v=${Date.now()}`;
                   } else {
                     img.style.display = 'none';
                   }

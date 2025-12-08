@@ -52,16 +52,29 @@ if (fs.existsSync(docsPath)) {
 }
 
 // Serve images - try dist first (production, Vite copies public to dist), then public (fallback)
+// Add no-cache headers for images to prevent caching issues
 const distImagesPath = path.join(frontendPath, 'images');
 const publicImagesPath = path.join(projectRoot, 'frontend/public/images');
 
 if (fs.existsSync(distImagesPath)) {
   // Production: serve from dist (Vite copies public to dist during build)
-  app.use('/images', express.static(distImagesPath));
+  app.use('/images', express.static(distImagesPath, {
+    setHeaders: (res, path) => {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+    }
+  }));
   console.log('Images served from dist:', distImagesPath);
 } else if (fs.existsSync(publicImagesPath)) {
   // Fallback: serve from public (development or if dist doesn't exist)
-  app.use('/images', express.static(publicImagesPath));
+  app.use('/images', express.static(publicImagesPath, {
+    setHeaders: (res, path) => {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+    }
+  }));
   console.log('Images served from public:', publicImagesPath);
 }
 
@@ -81,6 +94,10 @@ if (fs.existsSync(frontendPath)) {
     if (req.path.startsWith('/images')) {
       return; // Already handled above
     }
+    // Set no-cache headers for index.html to prevent caching issues
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     res.sendFile(path.join(frontendPath, 'index.html'));
   });
 } else {
