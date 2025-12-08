@@ -18,9 +18,9 @@ initStorage();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// __dirname is available in CommonJS modules
-// Use process.cwd() for the project root instead
-const projectRoot = process.cwd();
+// Get project root: backend/dist -> backend -> project root
+// __dirname in compiled file is backend/dist
+const projectRoot = path.join(__dirname, '../..');
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
