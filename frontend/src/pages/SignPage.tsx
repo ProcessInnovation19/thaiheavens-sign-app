@@ -179,25 +179,25 @@ export default function SignPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img 
-                  src="/images/logo.png" 
+                  src="https://sign.process-innovation.it/images/logo.png" 
                   alt="Thai Heavens" 
                   className="h-16 sm:h-20 w-auto object-contain"
                   style={{ maxHeight: '80px', display: 'block', minHeight: '40px' }}
                   onError={(e) => {
-                    // Try fallback URLs if local file doesn't exist
+                    // Try fallback URLs if server URL doesn't work
                     const img = e.target as HTMLImageElement;
                     const currentSrc = img.src;
                     console.log('Logo load error, current src:', currentSrc);
                     
-                    // Try external URLs in order
-                    if (!currentSrc.includes('thaiheavens.com') && !currentSrc.includes('sign.process-innovation.it')) {
-                      // First try: thaiheavens.com
+                    // Try local path first, then external
+                    if (currentSrc.includes('sign.process-innovation.it')) {
+                      // Try local path
+                      img.src = '/images/logo.png';
+                      console.log('Trying local /images/logo.png');
+                    } else if (!currentSrc.includes('thaiheavens.com')) {
+                      // Try thaiheavens.com
                       img.src = 'https://thaiheavens.com/logo.png';
                       console.log('Trying thaiheavens.com logo');
-                    } else if (currentSrc.includes('thaiheavens.com') && !currentSrc.includes('sign.process-innovation.it')) {
-                      // Second try: sign.process-innovation.it
-                      img.src = 'https://sign.process-innovation.it/images/logo.png';
-                      console.log('Trying sign.process-innovation.it logo');
                     } else {
                       // All fallbacks failed, hide image
                       console.log('All logo fallbacks failed, hiding image');
@@ -205,7 +205,7 @@ export default function SignPage() {
                     }
                   }}
                   onLoad={() => {
-                    console.log('Logo loaded successfully from:', (document.querySelector('img[alt="Thai Heavens"]') as HTMLImageElement)?.src);
+                    console.log('Logo loaded successfully');
                   }}
                 />
                 <div>
