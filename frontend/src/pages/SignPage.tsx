@@ -351,6 +351,13 @@ export default function SignPage() {
               <button
                 onClick={() => {
                   setStep('sign');
+                  setShowSignatureModal(true);
+                  // Request fullscreen to hide browser URL bar on mobile
+                  if (typeof window !== 'undefined' && window.innerWidth < 768 && document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(() => {
+                      // Ignore errors if fullscreen is not available
+                    });
+                  }
                 }}
                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 disabled={loading}
@@ -361,64 +368,8 @@ export default function SignPage() {
           </div>
         )}
 
-        {/* Step: Sign - Show card when not in modal, modal when clicked */}
-        {step === 'sign' && (
-          <>
-            {/* Mobile Portrait: Show card with Clear button */}
-            {!showSignatureModal && typeof window !== 'undefined' && window.innerWidth < 768 && !isLandscape && (
-              <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
-                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-soft border border-white/50 p-6 md:p-8">
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </div>
-                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Sign Document</h2>
-                    <p className="text-slate-600">Tap the card below to open the signature canvas</p>
-                  </div>
-                  
-                  <div 
-                    onClick={() => {
-                      setShowSignatureModal(true);
-                    }}
-                    className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-base">Open Signature Canvas</h3>
-                        <p className="text-sm text-slate-600">Tap to start signing</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Desktop: Show normal button */}
-            {!showSignatureModal && typeof window !== 'undefined' && window.innerWidth >= 768 && (
-              <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
-                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-soft border border-white/50 p-6 md:p-8 text-center">
-                  <button
-                    onClick={() => {
-                      setShowSignatureModal(true);
-                    }}
-                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                    disabled={loading}
-                  >
-                    Open Signature Canvas
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Fullscreen Modal - Show rotate message if portrait, canvas if landscape */}
-            {showSignatureModal && (
+        {/* Step: Sign - Directly show modal */}
+        {step === 'sign' && showSignatureModal && (
               <div className="fixed inset-0 z-[100] bg-white flex flex-col">
                 {/* Mobile Portrait: Show rotate message */}
                 {!isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
@@ -434,6 +385,10 @@ export default function SignPage() {
                     <button
                       onClick={() => {
                         setShowSignatureModal(false);
+                        // Exit fullscreen if active
+                        if (document.fullscreenElement) {
+                          document.exitFullscreen().catch(() => {});
+                        }
                       }}
                       className="mt-6 px-6 py-3 bg-white/20 hover:bg-white/30 rounded-lg font-semibold transition-colors"
                     >
@@ -451,6 +406,10 @@ export default function SignPage() {
                         onClick={() => {
                           setShowSignatureModal(false);
                           setSignatureDataUrl('');
+                          // Exit fullscreen if active
+                          if (document.fullscreenElement) {
+                            document.exitFullscreen().catch(() => {});
+                          }
                         }}
                         className="absolute top-4 right-4 z-50 w-10 h-10 bg-red-500/90 hover:bg-red-600 text-white rounded-lg flex items-center justify-center transition-colors shadow-2xl"
                         aria-label="Close"
@@ -463,21 +422,8 @@ export default function SignPage() {
                     
                     {/* Desktop header */}
                     {typeof window !== 'undefined' && window.innerWidth >= 768 && (
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 flex items-center justify-between shadow-md z-50 flex-shrink-0">
+                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 flex items-center justify-center shadow-md z-50 flex-shrink-0">
                         <h2 className="text-lg font-bold">Sign Document</h2>
-                        <button
-                          onClick={() => {
-                            setSignatureDataUrl('');
-                            const event = new CustomEvent('clearSignature');
-                            window.dispatchEvent(event);
-                          }}
-                          className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Clear
-                        </button>
                       </div>
                     )}
                     
@@ -501,6 +447,10 @@ export default function SignPage() {
                           onClick={async () => {
                             if (signatureDataUrl) {
                               setShowSignatureModal(false);
+                              // Exit fullscreen if active
+                              if (document.fullscreenElement) {
+                                document.exitFullscreen().catch(() => {});
+                              }
                               await handleApplySignature();
                             }
                           }}
