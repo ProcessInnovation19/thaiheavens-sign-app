@@ -51,9 +51,18 @@ if (fs.existsSync(docsPath)) {
   });
 }
 
-// Serve frontend public files (images, etc.) - these are also in dist, but this ensures they're accessible
-if (fs.existsSync(frontendPublicPath)) {
-  app.use('/images', express.static(path.join(frontendPublicPath, 'images')));
+// Serve images - try dist first (production, Vite copies public to dist), then public (fallback)
+const distImagesPath = path.join(frontendPath, 'images');
+const publicImagesPath = path.join(projectRoot, 'frontend/public/images');
+
+if (fs.existsSync(distImagesPath)) {
+  // Production: serve from dist (Vite copies public to dist during build)
+  app.use('/images', express.static(distImagesPath));
+  console.log('Images served from dist:', distImagesPath);
+} else if (fs.existsSync(publicImagesPath)) {
+  // Fallback: serve from public (development or if dist doesn't exist)
+  app.use('/images', express.static(publicImagesPath));
+  console.log('Images served from public:', publicImagesPath);
 }
 
 // Serve frontend static files
@@ -67,6 +76,9 @@ if (fs.existsSync(frontendPath)) {
       return res.status(404).json({ error: 'Not found' });
     }
     if (req.path.startsWith('/docs')) {
+      return; // Already handled above
+    }
+    if (req.path.startsWith('/images')) {
       return; // Already handled above
     }
     res.sendFile(path.join(frontendPath, 'index.html'));
