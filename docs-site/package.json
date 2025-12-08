@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vitepress build .",
-    "copy-to-frontend": "vitepress build . && powershell -Command \"Remove-Item -Path '..\\frontend\\public\\docs' -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item -Path '.vitepress\\dist\\*' -Destination '..\\frontend\\public\\docs\\' -Recurse -Force\""
+    "copy-to-frontend": "bash copy-to-frontend.sh"
   },
   "devDependencies": {
     "mermaid": "^10.9.5",
