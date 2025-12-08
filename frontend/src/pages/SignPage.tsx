@@ -534,7 +534,6 @@ export default function SignPage() {
                 )}
               </div>
             )}
-        )}
 
         {/* Step: Preview */}
         {step === 'preview' && session && (
