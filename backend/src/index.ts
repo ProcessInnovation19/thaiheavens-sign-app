@@ -35,6 +35,7 @@ app.use('/api/calibrate', calibrateRoutes);
 
 // Serve frontend static files (both production and when served by Express)
 const frontendPath = path.join(projectRoot, 'frontend/dist');
+const frontendPublicPath = path.join(projectRoot, 'frontend/public');
 const docsPath = path.join(projectRoot, 'frontend/public/docs');
 
 // Serve documentation
@@ -48,6 +49,11 @@ if (fs.existsSync(docsPath)) {
     }
     res.sendFile(path.join(docsPath, 'index.html'));
   });
+}
+
+// Serve frontend public files (images, etc.) - these are also in dist, but this ensures they're accessible
+if (fs.existsSync(frontendPublicPath)) {
+  app.use('/images', express.static(path.join(frontendPublicPath, 'images')));
 }
 
 // Serve frontend static files

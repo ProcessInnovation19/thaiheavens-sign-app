@@ -87,8 +87,16 @@ export async function sendSigningLinkEmail(
 ): Promise<void> {
   const subject = 'Digital Signature Request';
   
-  // Use external logo URL
-  const logoSrc = 'https://thaiheavens.com/logo.png';
+  // Extract base URL from signing URL to use for logo
+  let logoSrc: string;
+  try {
+    const url = new URL(signingUrl);
+    logoSrc = `${url.protocol}//${url.host}/images/logo.png`;
+  } catch (error) {
+    // Fallback to environment variable or default
+    const baseUrl = process.env.BASE_URL || 'https://sign.process-innovation.it';
+    logoSrc = `${baseUrl}/images/logo.png`;
+  }
   
   const html = `<!DOCTYPE html>
 <html>
