@@ -119,3 +119,4 @@ Se l'agente continua a bloccarsi:
 
 **Ultimo aggiornamento:** Questa guida è basata su informazioni generali. Le impostazioni specifiche possono variare in base alla versione di Cursor.
 
+

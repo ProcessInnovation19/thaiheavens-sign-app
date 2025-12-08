@@ -13,3 +13,4 @@ cp -r .vitepress/dist/* ../frontend/public/docs/
 
 echo "Documentation copied to frontend/public/docs/"
 
+
