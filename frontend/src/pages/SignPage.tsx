@@ -172,46 +172,48 @@ export default function SignPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 py-4 max-w-4xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img 
-                src="/images/logo.png" 
-                alt="Thai Heavens" 
-                className="h-16 sm:h-20 w-auto object-contain"
-                style={{ maxHeight: '80px', display: 'block' }}
-                onError={(e) => {
-                  // Try fallback URL if local file doesn't exist
-                  const img = e.target as HTMLImageElement;
-                  const currentSrc = img.src;
-                  if (!currentSrc.includes('thaiheavens.com')) {
-                    img.src = 'https://thaiheavens.com/logo.png';
-                  } else if (!currentSrc.includes('sign.process-innovation.it')) {
-                    // Try server URL
-                    img.src = 'https://sign.process-innovation.it/images/logo.png';
-                  } else {
-                    img.style.display = 'none';
-                  }
-                }}
-              />
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  Digital Signature
-                </h1>
-                {session.guestName && (
-                  <p className="text-sm text-slate-600 mt-0.5">Hello, {session.guestName}</p>
-                )}
+      {/* Header - Hide when signature modal is open on mobile */}
+      {!(showSignatureModal && window.innerWidth < 768) && (
+        <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 sticky top-0 z-50 shadow-sm">
+          <div className="container mx-auto px-4 py-4 max-w-4xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/images/logo.png" 
+                  alt="Thai Heavens" 
+                  className="h-16 sm:h-20 w-auto object-contain"
+                  style={{ maxHeight: '80px', display: 'block' }}
+                  onError={(e) => {
+                    // Try fallback URL if local file doesn't exist
+                    const img = e.target as HTMLImageElement;
+                    const currentSrc = img.src;
+                    if (!currentSrc.includes('thaiheavens.com')) {
+                      img.src = 'https://thaiheavens.com/logo.png';
+                    } else if (!currentSrc.includes('sign.process-innovation.it')) {
+                      // Try server URL
+                      img.src = 'https://sign.process-innovation.it/images/logo.png';
+                    } else {
+                      img.style.display = 'none';
+                    }
+                  }}
+                />
+                <div>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    Digital Signature
+                  </h1>
+                  {session.guestName && (
+                    <p className="text-sm text-slate-600 mt-0.5">Hello, {session.guestName}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                Secure Session
               </div>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              Secure Session
-            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-4xl">
         {/* Error Alert */}
@@ -253,6 +255,18 @@ export default function SignPage() {
                 </div>
               )}
               
+              {/* Mobile orientation hint */}
+              {typeof window !== 'undefined' && window.innerWidth < 768 && !isLandscape && (
+                <div className="mb-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <p className="text-sm font-bold text-amber-800">Tip: Rotate your phone to landscape for easier signing</p>
+                  </div>
+                </div>
+              )}
+              
               <button
                 onClick={() => {
                   setShowSignatureModal(true);
@@ -270,22 +284,22 @@ export default function SignPage() {
         {/* Step: Sign - Fullscreen Modal */}
         {step === 'sign' && showSignatureModal && (
           <div className="fixed inset-0 z-[100] bg-white flex flex-col">
-            {/* Show rotate message if portrait on mobile */}
-            {!isLandscape && window.innerWidth < 768 && (
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex flex-col items-center justify-center z-50 p-8 text-center">
+            {/* Show rotate message if portrait on mobile - MUST BE VISIBLE */}
+            {!isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex flex-col items-center justify-center z-[110] p-8 text-center">
                 <div className="mb-6" style={{ animation: 'spin 3s linear infinite' }}>
                   <svg className="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </div>
                 <h2 className="text-3xl font-bold mb-4">Rotate Your Device</h2>
-                <p className="text-xl mb-2">Please rotate your phone to landscape mode</p>
+                <p className="text-xl mb-2 font-semibold">Please rotate your phone to landscape mode</p>
                 <p className="text-lg text-blue-100">to sign the document</p>
               </div>
             )}
 
-            {/* Modal Header - Only show in landscape or desktop */}
-            {(isLandscape || window.innerWidth >= 768) && (
+            {/* Modal Header - Hide in mobile landscape, show only on desktop */}
+            {(!isLandscape || window.innerWidth >= 768) && (
               <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 sm:py-4 flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded-lg flex items-center justify-center">
@@ -307,10 +321,10 @@ export default function SignPage() {
                 <div className="w-full h-full flex flex-col" style={{ height: '100%' }}>
                   <SignaturePadComponent
                     onSignatureChange={setSignatureDataUrl}
-                    fullscreen={isLandscape && window.innerWidth < 768}
+                    fullscreen={isLandscape && typeof window !== 'undefined' && window.innerWidth < 768}
                     height={typeof window !== 'undefined' 
                       ? (isLandscape && window.innerWidth < 768 
-                          ? window.innerHeight - 60  // Full height minus small header in landscape mobile
+                          ? window.innerHeight  // Full height in landscape mobile (no header)
                           : window.innerWidth >= 768 
                             ? Math.max(window.innerHeight - 200, 400)  // Desktop
                             : Math.max(window.innerHeight - 200, 400))  // Portrait mobile
@@ -318,39 +332,43 @@ export default function SignPage() {
                   />
                 </div>
                 
-                {/* Floating OK button in landscape mobile */}
-                {isLandscape && window.innerWidth < 768 && (
+                {/* Instructions and OK button in landscape mobile - MUST BE VISIBLE */}
+                {isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
                   <>
-                    <div className="absolute bottom-4 left-0 right-0 bg-black/70 text-white px-4 py-2 text-center z-40">
-                      <p className="text-xs font-semibold mb-2">When finished, rotate to portrait or click OK below</p>
+                    <div className="absolute top-4 left-0 right-0 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 backdrop-blur-sm text-white px-4 py-3 text-center z-50 shadow-lg">
+                      <p className="text-sm font-bold mb-1">When finished signing:</p>
+                      <p className="text-xs">Rotate to portrait OR click "Done" button below</p>
                     </div>
-                    <button
-                      onClick={async () => {
-                        if (signatureDataUrl) {
-                          setShowSignatureModal(false);
-                          await handleApplySignature();
-                        }
-                      }}
-                      className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-50 px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-base shadow-2xl hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-                      disabled={!signatureDataUrl || loading}
-                    >
-                      {loading ? (
-                        <>
-                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span>Applying...</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>OK</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="absolute bottom-4 left-0 right-0 bg-black/80 text-white px-4 py-3 text-center z-50">
+                      <p className="text-xs font-semibold mb-3">Tap the button below to save your signature</p>
+                      <button
+                        onClick={async () => {
+                          if (signatureDataUrl) {
+                            setShowSignatureModal(false);
+                            await handleApplySignature();
+                          }
+                        }}
+                        className="w-full max-w-xs mx-auto px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-lg shadow-2xl hover:from-emerald-700 hover:to-teal-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                        disabled={!signatureDataUrl || loading}
+                      >
+                        {loading ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Applying...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>Done</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
