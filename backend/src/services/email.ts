@@ -1,6 +1,4 @@
 import nodemailer from 'nodemailer';
-import * as fs from 'fs';
-import * as path from 'path';
 
 interface EmailConfig {
   host: string;
@@ -79,55 +77,6 @@ export async function sendEmail(params: SendEmailParams & { attachments?: any[] 
     await emailTransporter.sendMail(mailOptions);
   } catch (error: any) {
     throw new Error(`Failed to send email: ${error.message}`);
-  }
-}
-
-// Get logo as base64 and attachment for email
-function getLogoData(): { base64: string; attachment: any; cid: string } | null {
-  try {
-    // Try multiple possible paths
-    const possiblePaths = [
-      path.join(__dirname, '../../frontend/public/images/logo.png'),
-      path.join(process.cwd(), 'frontend/public/images/logo.png'),
-      path.resolve('frontend/public/images/logo.png'),
-    ];
-    
-    let logoPath: string | null = null;
-    for (const testPath of possiblePaths) {
-      if (fs.existsSync(testPath)) {
-        logoPath = testPath;
-        console.log('Logo found at:', logoPath);
-        break;
-      }
-    }
-    
-    if (!logoPath) {
-      console.warn('Logo not found in any of the expected paths');
-      return null;
-    }
-    
-    // Read logo file
-    const logoBuffer = fs.readFileSync(logoPath);
-    const logoBase64 = logoBuffer.toString('base64');
-    
-    // Create attachment for inline image
-    const cid = 'thaiheavens-logo';
-    const attachment = {
-      filename: 'logo.png',
-      content: logoBuffer,
-      cid: cid,
-      contentDisposition: 'inline',
-      contentType: 'image/png'
-    };
-    
-    return {
-      base64: logoBase64,
-      attachment: attachment,
-      cid: cid
-    };
-  } catch (error) {
-    console.error('Error loading logo for email:', error);
-    return null;
   }
 }
 
