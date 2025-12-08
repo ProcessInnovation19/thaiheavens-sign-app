@@ -79,11 +79,11 @@ Nella sezione "Environment Variables" della Node.js App, aggiungi:
 ```
 NODE_ENV=production
 PORT=5000
-SMTP_HOST=smtp.qboxmail.com
+SMTP_HOST=your-smtp-host.com
 SMTP_PORT=465
 SMTP_SECURE=true
-SMTP_USER=admin@thaiheavens.com
-SMTP_PASS=b5JZypAsbgjt
+SMTP_USER=your-email@example.com
+SMTP_PASS=your-smtp-password
 ```
 
 ## Step 4: Build e Installazione
@@ -238,7 +238,28 @@ module.exports = {
 };
 ```
 
-## Step 9: Configurare Deployment Script (Webhook)
+## Step 9: Configurare Webhook GitHub per Deploy Automatico
+
+### 9.1 Ottieni l'URL del Webhook da RunCloud
+
+1. Vai su RunCloud Dashboard → Web Apps → `thaiheavens-sign-app-web` → Git
+2. Copia l'URL del webhook (esempio: `https://manage.runcloud.io/webhooks/git/...`)
+
+### 9.2 Configura il Webhook in GitHub
+
+1. Vai su GitHub: https://github.com/ProcessInnovation19/thaiheavens-sign-app
+2. Vai in **Settings** → **Webhooks** → **Add webhook**
+3. Compila i campi:
+   - **Payload URL**: Incolla l'URL del webhook di RunCloud
+   - **Content type**: `application/json`
+   - **Secret**: Lascia vuoto (RunCloud non richiede secret)
+   - **Which events**: Seleziona "Just the push event"
+   - **Active**: ✅ Spunta la casella
+4. Clicca **Add webhook**
+
+Ora ogni `git push` attiverà automaticamente il deploy su RunCloud! 🚀
+
+### 9.3 Configurare Deployment Script
 
 RunCloud supporta deployment automatico tramite webhook Git. Configura lo script nella sezione "Deployment script" della Web App:
 

@@ -34,7 +34,9 @@ chmod +x deploy.sh
 
 ## Opzione 3: Webhook GitHub (Deploy Automatico) 🤖
 
-**La soluzione migliore!** Configura il webhook in RunCloud:
+**La soluzione migliore!** Configura il webhook per deploy completamente automatico:
+
+### 3.1 Configura il Deployment Script in RunCloud
 
 1. Vai su **RunCloud Dashboard** → **Web Apps** → `thaiheavens-sign-app-web`
 2. Vai su **Git** → **Deployment script**
@@ -74,8 +76,22 @@ else
 fi
 ```
 
-5. Salva e configura il webhook GitHub URL in RunCloud
-6. **Ogni volta che fai `git push`, il deploy parte automaticamente!** 🎉
+5. Salva lo script
+
+### 3.2 Configura il Webhook in GitHub
+
+1. In RunCloud, copia l'URL del webhook (esempio: `https://manage.runcloud.io/webhooks/git/...`)
+2. Vai su GitHub: https://github.com/ProcessInnovation19/thaiheavens-sign-app
+3. Vai in **Settings** → **Webhooks** → **Add webhook**
+4. Compila:
+   - **Payload URL**: Incolla l'URL del webhook di RunCloud
+   - **Content type**: `application/json`
+   - **Secret**: Lascia vuoto
+   - **Which events**: Seleziona "Just the push event"
+   - **Active**: ✅ Spunta
+5. Clicca **Add webhook**
+
+**Fatto!** 🎉 Ogni volta che fai `git push`, il deploy parte automaticamente!
 
 ## Cosa fanno gli script?
 
