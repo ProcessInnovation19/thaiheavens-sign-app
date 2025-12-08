@@ -4,11 +4,13 @@ import SignaturePad from 'signature_pad';
 interface SignaturePadComponentProps {
   onSignatureChange?: (dataUrl: string) => void;
   height?: number;
+  fullscreen?: boolean;
 }
 
 export default function SignaturePadComponent({
   onSignatureChange,
   height = 300,
+  fullscreen = false,
 }: SignaturePadComponentProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const signaturePadRef = useRef<SignaturePad | null>(null);
@@ -148,12 +150,14 @@ export default function SignaturePadComponent({
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center">
-      <div className="w-full h-full bg-white rounded-xl shadow-lg border-2 border-slate-300 overflow-hidden relative">
-        <div className="bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-2 border-b border-slate-200">
-          <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Signature Canvas</p>
-        </div>
-        <div className="relative w-full h-full" style={{ height: `${height}px` }}>
+    <div className={`w-full h-full flex flex-col items-center ${fullscreen ? 'h-full' : ''}`}>
+      <div className={`w-full h-full bg-white ${fullscreen ? 'rounded-none border-0 shadow-none h-full' : 'rounded-xl shadow-lg border-2 border-slate-300'} overflow-hidden relative`}>
+        {!fullscreen && (
+          <div className="bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-2 border-b border-slate-200">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Signature Canvas</p>
+          </div>
+        )}
+        <div className="relative w-full h-full" style={{ height: fullscreen ? '100%' : `${height}px` }}>
           <canvas
             ref={canvasRef}
             className="w-full h-full absolute inset-0"
@@ -173,15 +177,28 @@ export default function SignaturePadComponent({
           )}
         </div>
       </div>
-      <button
-        onClick={handleClear}
-        className="mt-4 px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-all duration-200 shadow-sm hover:shadow flex items-center gap-2"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        Clear Signature
-      </button>
+      {!fullscreen && (
+        <button
+          onClick={handleClear}
+          className="mt-4 px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-all duration-200 shadow-sm hover:shadow flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Clear Signature
+        </button>
+      )}
+      {fullscreen && (
+        <button
+          onClick={handleClear}
+          className="absolute top-4 right-4 z-30 px-4 py-2 bg-white/90 backdrop-blur-sm text-slate-700 rounded-lg font-semibold hover:bg-white transition-all duration-200 shadow-lg flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span className="hidden sm:inline">Clear</span>
+        </button>
+      )}
     </div>
   );
 }
