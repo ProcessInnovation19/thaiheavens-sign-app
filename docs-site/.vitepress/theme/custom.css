@@ -12,26 +12,57 @@
 .VPNavBarTitle .title {
   white-space: normal;
   word-break: break-word;
-  max-width: 180px;
+  max-width: 200px;
   line-height: 1.3;
+  font-size: 16px;
+}
+
+/* Ensure proper layout and spacing */
+.VPLayout {
+  min-height: 100vh;
+}
+
+.VPContent {
+  padding: 0;
+}
+
+/* Fix sidebar styling */
+.VPSidebar {
+  background: var(--vp-c-bg);
+  border-right: 1px solid var(--vp-c-divider);
+}
+
+.VPSidebarItem .item {
+  padding: 0.5rem 1rem;
+}
+
+.VPSidebarItem .text {
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /* Center Mermaid diagrams */
 .mermaid {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin: 2rem auto;
+  padding: 1rem;
+  overflow-x: auto;
 }
 
 .mermaid svg {
   max-width: 100%;
   height: auto;
+  display: block;
 }
 
 /* Ensure diagram containers are centered */
 .vp-doc div[class*="mermaid"] {
   text-align: center;
   margin: 2rem 0;
+  display: flex;
+  justify-content: center;
 }
 
 /* Fix for Mermaid diagram spacing */
@@ -39,10 +70,94 @@
   text-align: center;
   background: transparent;
   padding: 1rem;
+  border: none;
 }
 
 /* Center all code blocks with mermaid */
 .vp-doc pre code.language-mermaid {
   display: block;
   margin: 0 auto;
+  text-align: center;
+}
+
+/* Improve content readability */
+.vp-doc {
+  max-width: 100%;
+  padding: 2rem;
+}
+
+.vp-doc h1, .vp-doc h2, .vp-doc h3 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.vp-doc p {
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.vp-doc ul, .vp-doc ol {
+  margin-bottom: 1.5rem;
+  padding-left: 2rem;
+}
+
+.vp-doc li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+/* Fix code blocks */
+.vp-doc pre {
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+}
+
+.vp-doc code {
+  font-size: 0.9em;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+/* Improve table styling */
+.vp-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+}
+
+.vp-doc table th,
+.vp-doc table td {
+  padding: 0.75rem;
+  border: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc table th {
+  background: var(--vp-c-bg-soft);
+  font-weight: 600;
+}
+
+/* Fix links */
+.vp-doc a {
+  color: var(--vp-c-brand);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.vp-doc a:hover {
+  color: var(--vp-c-brand-dark);
+  text-decoration: underline;
+}
+
+/* Improve mobile responsiveness */
+@media (max-width: 768px) {
+  .vp-doc {
+    padding: 1rem;
+  }
+  
+  .VPNavBarTitle .title {
+    max-width: 150px;
+    font-size: 14px;
+  }
 }

@@ -1,5 +1,6 @@
 import { PDFDocument, PDFPage, rgb } from 'pdf-lib';
 import * as fs from 'fs';
+import * as path from 'path';
 import { SigningSession } from '../models/SigningSession';
 import { getOriginalPdfPath, getSignedPdfPath } from './storage';
 
@@ -19,12 +20,21 @@ export async function applySignatureToPdf(
   session: SigningSession,
   signatureImageBase64: string
 ): Promise<string> {
-  // Read the original PDF
-  const originalPdfPath = getOriginalPdfPath(session.pdfId);
-  const originalPdfBytes = fs.readFileSync(originalPdfPath);
+  // Add timeout protection (30 seconds max)
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('PDF processing timeout after 30 seconds')), 30000);
+  });
 
-  // Load the PDF
-  const pdfDoc = await PDFDocument.load(originalPdfBytes);
+  const processPdf = async (): Promise<string> => {
+    // Read the original PDF
+    const originalPdfPath = getOriginalPdfPath(session.pdfId);
+    if (!fs.existsSync(originalPdfPath)) {
+      throw new Error(`Original PDF not found: ${originalPdfPath}`);
+    }
+    const originalPdfBytes = fs.readFileSync(originalPdfPath);
+
+    // Load the PDF
+    const pdfDoc = await PDFDocument.load(originalPdfBytes);
 
   // Get the page where signature should be placed
   const pages = pdfDoc.getPages();
@@ -57,11 +67,22 @@ export async function applySignatureToPdf(
     height: session.height,
   });
 
-  // Save the modified PDF
-  const pdfBytes = await pdfDoc.save();
-  const signedPdfPath = getSignedPdfPath(session.id);
-  fs.writeFileSync(signedPdfPath, pdfBytes);
+    // Save the modified PDF
+    const pdfBytes = await pdfDoc.save();
+    const signedPdfPath = getSignedPdfPath(session.id);
+    
+    // Ensure directory exists
+    const dir = path.dirname(signedPdfPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    fs.writeFileSync(signedPdfPath, pdfBytes);
 
-  return signedPdfPath;
+    return signedPdfPath;
+  };
+
+  // Race between processing and timeout
+  return Promise.race([processPdf(), timeoutPromise]);
 }
 

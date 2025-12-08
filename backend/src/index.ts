@@ -65,7 +65,39 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
+// Global error handler to prevent crashes
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit - log and continue
+  // In production, you might want to exit and let the process manager restart
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Fatal error in production, exiting...');
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit - log and continue
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  process.exit(0);
+});
+
+const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// Timeout for requests (30 seconds)
+server.timeout = 30000;
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 

@@ -32,7 +32,16 @@ export function getSessions(): SigningSession[] {
 }
 
 export function saveSessions(sessions: SigningSession[]) {
-  fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2));
+  try {
+    // Use writeFileSync with a temporary file first to avoid corruption
+    const tempFile = `${SESSIONS_FILE}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(sessions, null, 2));
+    fs.renameSync(tempFile, SESSIONS_FILE);
+  } catch (error) {
+    console.error('Error saving sessions:', error);
+    // Don't throw - allow the app to continue even if save fails
+    // The next read will get the old data, but at least the app won't crash
+  }
 }
 
 export function getSessionById(id: string): SigningSession | undefined {
@@ -46,14 +55,19 @@ export function getSessionByToken(token: string): SigningSession | undefined {
 }
 
 export function saveSession(session: SigningSession) {
-  const sessions = getSessions();
-  const index = sessions.findIndex(s => s.id === session.id);
-  if (index >= 0) {
-    sessions[index] = session;
-  } else {
-    sessions.push(session);
+  try {
+    const sessions = getSessions();
+    const index = sessions.findIndex(s => s.id === session.id);
+    if (index >= 0) {
+      sessions[index] = session;
+    } else {
+      sessions.push(session);
+    }
+    saveSessions(sessions);
+  } catch (error) {
+    console.error('Error saving session:', error);
+    // Don't throw - allow the app to continue
   }
-  saveSessions(sessions);
 }
 
 export function getOriginalPdfPath(pdfId: string): string {

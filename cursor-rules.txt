@@ -236,3 +236,12 @@ CODING STYLE
 Always keep in mind:
 - I need to be able to understand, run and extend this project easily.
 - The priority is a working end-to-end flow: upload → configure → link → guest sign → confirm → download signed PDF.
+
+AGENT BEHAVIOR LIMITS (IMPORTANT)
+- Complete one task at a time before starting another
+- If no progress is made after 3-5 minutes, stop and report current status
+- Do not retry failed operations more than 3 times
+- If stuck in a loop or unable to proceed, stop and ask for clarification
+- Maximum iterations per task: 10 steps
+- If a task seems too complex, break it into smaller subtasks
+- Always report what you've done before moving to the next step
