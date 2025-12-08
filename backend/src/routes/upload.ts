@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -28,7 +28,7 @@ const upload = multer({
 export const uploadRoutes = Router();
 
 // Error handling middleware for multer
-const handleMulterError = (err: any, req: any, res: any, next: any) => {
+const handleMulterError = (err: any, req: Request, res: Response, next: NextFunction) => {
   if (err) {
     console.error('Multer error:', err);
     if (err.code === 'LIMIT_FILE_SIZE') {
@@ -42,7 +42,7 @@ const handleMulterError = (err: any, req: any, res: any, next: any) => {
   next();
 };
 
-uploadRoutes.post('/upload-pdf', upload.single('file'), handleMulterError, (req, res) => {
+uploadRoutes.post('/upload-pdf', upload.single('file'), handleMulterError, (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
