@@ -123,6 +123,17 @@ export default function SignaturePadComponent({
     }
   }, [onSignatureChange]);
 
+  // Listen for clear event from parent (for mobile landscape mode)
+  useEffect(() => {
+    const handleClearEvent = () => {
+      handleClear();
+    };
+    window.addEventListener('clearSignature', handleClearEvent);
+    return () => {
+      window.removeEventListener('clearSignature', handleClearEvent);
+    };
+  }, []);
+
   const handleClear = () => {
     signaturePadRef.current?.clear();
     setIsEmpty(true);
@@ -188,7 +199,8 @@ export default function SignaturePadComponent({
           Clear Signature
         </button>
       )}
-      {fullscreen && (
+      {/* Clear button only shown in fullscreen desktop, not in mobile landscape (handled by parent) */}
+      {fullscreen && typeof window !== 'undefined' && window.innerWidth >= 768 && (
         <button
           onClick={handleClear}
           className="absolute top-4 right-4 z-30 px-4 py-2 bg-white/90 backdrop-blur-sm text-slate-700 rounded-lg font-semibold hover:bg-white transition-all duration-200 shadow-lg flex items-center gap-2"
