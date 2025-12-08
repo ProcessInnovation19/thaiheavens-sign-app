@@ -567,27 +567,26 @@ export default function SignPage() {
                     </div>
                   )}
                   
-                  {/* Mobile Fullscreen PDF Viewer Modal */}
+                  {/* Mobile Fullscreen PDF Viewer Modal - Adobe Reader Light style */}
                   {typeof window !== 'undefined' && window.innerWidth < 768 && showPdfViewer && (
-                    <div className="fixed inset-0 z-[200] bg-white flex flex-col">
-                      {/* Header with close button */}
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 flex items-center justify-between shadow-lg">
-                        <h2 className="text-lg font-bold">Document Preview</h2>
-                        <button
-                          onClick={() => setShowPdfViewer(false)}
-                          className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-colors"
-                        >
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
+                    <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+                      {/* Close button - top left, minimal */}
+                      <button
+                        onClick={() => setShowPdfViewer(false)}
+                        className="absolute top-2 left-2 z-50 w-10 h-10 bg-black/70 hover:bg-black/90 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg backdrop-blur-sm"
+                        aria-label="Close"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                       
-                      {/* Fullscreen PDF Viewer */}
-                      <div className="flex-1 overflow-hidden relative">
+                      {/* Fullscreen PDF Viewer - fills entire screen */}
+                      <div className="flex-1 overflow-hidden relative w-full h-full">
                         <PDFViewer 
                           pdfUrl={signedPdfUrl} 
                           readOnly={true}
+                          fullscreen={true}
                           selectedPage={session.page + 1}
                         />
                       </div>

@@ -626,8 +626,6 @@ export default function PDFViewer({
                   const rect = containerRef.current.getBoundingClientRect();
                   const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
                   const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
-                  const startCenterX = pinchStart.center.x - rect.left;
-                  const startCenterY = pinchStart.center.y - rect.top;
                   
                   // Zoom towards the pinch center point
                   const zoomChange = newZoom / pinchStart.zoom;
