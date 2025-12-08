@@ -326,14 +326,41 @@ export default function SignPage() {
 
             {/* Signature Canvas - Fullscreen */}
             {(isLandscape || window.innerWidth >= 768) && (
-              <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 overflow-hidden relative" style={{ height: '100%' }}>
-                <div className="w-full h-full flex flex-col" style={{ height: '100%' }}>
+              <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden relative" style={{ height: '100%' }}>
+                {/* Compact header with Clear button in landscape mobile */}
+                {isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-2 flex items-center justify-between shadow-md z-50 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      <p className="text-xs font-semibold truncate">Sign Document</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSignatureDataUrl('');
+                        // Trigger clear in SignaturePad component
+                        const event = new CustomEvent('clearSignature');
+                        window.dispatchEvent(event);
+                      }}
+                      className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Clear
+                    </button>
+                  </div>
+                )}
+                
+                {/* Signature Canvas - Takes all available space */}
+                <div className="flex-1 flex flex-col items-center justify-center overflow-hidden relative" style={{ minHeight: 0 }}>
                   <SignaturePadComponent
                     onSignatureChange={setSignatureDataUrl}
                     fullscreen={isLandscape && typeof window !== 'undefined' && window.innerWidth < 768}
                     height={typeof window !== 'undefined' 
                       ? (isLandscape && window.innerWidth < 768 
-                          ? window.innerHeight  // Full height in landscape mobile (no header)
+                          ? window.innerHeight - 50  // Full height minus compact header
                           : window.innerWidth >= 768 
                             ? Math.max(window.innerHeight - 200, 400)  // Desktop
                             : Math.max(window.innerHeight - 200, 400))  // Portrait mobile
@@ -343,13 +370,9 @@ export default function SignPage() {
                 
                 {/* Instructions and OK button in landscape mobile - MUST BE VISIBLE */}
                 {isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
-                  <>
-                    <div className="absolute top-4 left-0 right-0 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 backdrop-blur-sm text-white px-4 py-3 text-center z-50 shadow-lg">
-                      <p className="text-sm font-bold mb-1">When finished signing:</p>
-                      <p className="text-xs">Rotate to portrait OR click "Done" button below</p>
-                    </div>
-                    <div className="absolute bottom-4 left-0 right-0 bg-black/80 text-white px-4 py-3 text-center z-50">
-                      <p className="text-xs font-semibold mb-3">Tap the button below to save your signature</p>
+                  <div className="absolute bottom-4 left-0 right-0 px-4 z-50 flex-shrink-0">
+                    <div className="bg-black/80 backdrop-blur-sm rounded-xl text-white px-4 py-3 text-center shadow-2xl">
+                      <p className="text-xs font-semibold mb-2">When finished: Rotate to portrait OR tap "Done"</p>
                       <button
                         onClick={async () => {
                           if (signatureDataUrl) {
@@ -357,7 +380,7 @@ export default function SignPage() {
                             await handleApplySignature();
                           }
                         }}
-                        className="w-full max-w-xs mx-auto px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-lg shadow-2xl hover:from-emerald-700 hover:to-teal-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                        className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-bold text-base shadow-xl hover:from-emerald-700 hover:to-teal-700 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
                         disabled={!signatureDataUrl || loading}
                       >
                         {loading ? (
@@ -370,7 +393,7 @@ export default function SignPage() {
                           </>
                         ) : (
                           <>
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             <span>Done</span>
@@ -378,7 +401,7 @@ export default function SignPage() {
                         )}
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             )}
