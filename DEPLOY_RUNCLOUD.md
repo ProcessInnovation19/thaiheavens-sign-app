@@ -140,6 +140,41 @@ Nella Web App, vai su "Nginx Config" e modifica per fare proxy al backend:
 
 ```nginx
 # Aggiungi questa configurazione nella sezione "Custom Nginx Configuration"
+# IMPORTANTE: Disabilita cache per vedere gli aggiornamenti immediatamente
+
+# Disabilita cache per HTML
+location ~* \.(html)$ {
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+    root /home/fabrizio/webapps/thaiheavens-sign-app/frontend/dist;
+    try_files $uri $uri/ /index.html;
+}
+
+# Disabilita cache per JavaScript e CSS
+location ~* \.(js|css)$ {
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+    root /home/fabrizio/webapps/thaiheavens-sign-app/frontend/dist;
+}
+
+# Disabilita cache per immagini
+location /images/ {
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+    root /home/fabrizio/webapps/thaiheavens-sign-app/frontend/dist;
+    try_files $uri =404;
+}
+
+# Disabilita cache per index.html (SPA routing)
+location = /index.html {
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+    root /home/fabrizio/webapps/thaiheavens-sign-app/frontend/dist;
+}
 
 # Proxy per API
 location /api {
@@ -152,17 +187,27 @@ location /api {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_cache_bypass $http_upgrade;
+    # Disabilita cache per API
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
 }
 
-# Serve frontend static files
+# Serve frontend static files (con no-cache)
 location / {
-    root /home/runcloud/thaiheavens-sign-app/frontend/dist;
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+    root /home/fabrizio/webapps/thaiheavens-sign-app/frontend/dist;
     try_files $uri $uri/ /index.html;
 }
 
-# Serve docs
+# Serve docs (con no-cache)
 location /docs {
-    alias /home/runcloud/thaiheavens-sign-app/docs-site/.vitepress/dist;
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+    alias /home/fabrizio/webapps/thaiheavens-sign-app/frontend/public/docs;
     try_files $uri $uri/ /docs/index.html;
 }
 ```
