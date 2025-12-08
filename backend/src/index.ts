@@ -18,7 +18,9 @@ initStorage();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const __dirname = path.resolve();
+// __dirname is available in CommonJS modules
+// Use process.cwd() for the project root instead
+const projectRoot = process.cwd();
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -33,8 +35,8 @@ app.use('/api/calibrate', calibrateRoutes);
 
 // Serve frontend static files in production
 if (process.env.NODE_ENV === 'production') {
-  const frontendPath = path.join(__dirname, '../../frontend/dist');
-  const docsPath = path.join(__dirname, '../../docs-site/.vitepress/dist');
+  const frontendPath = path.join(projectRoot, 'frontend/dist');
+  const docsPath = path.join(projectRoot, 'docs-site/.vitepress/dist');
   
   // Serve documentation
   if (fs.existsSync(docsPath)) {
