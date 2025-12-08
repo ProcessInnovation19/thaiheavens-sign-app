@@ -1,0 +1,15 @@
+{
+  "name": "thaiheavens-docs",
+  "version": "1.0.0",
+  "description": "Documentation site for ThaiHeavensSignApp",
+  "type": "module",
+  "scripts": {
+    "build": "vitepress build .",
+    "copy-to-frontend": "vitepress build . && powershell -Command \"Remove-Item -Path '..\\frontend\\public\\docs' -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item -Path '.vitepress\\dist\\*' -Destination '..\\frontend\\public\\docs\\' -Recurse -Force\""
+  },
+  "devDependencies": {
+    "mermaid": "^10.9.5",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17"
+  }
+}

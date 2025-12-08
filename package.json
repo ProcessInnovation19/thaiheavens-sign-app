@@ -1,0 +1,21 @@
+{
+  "name": "thaiheavens-sign-app",
+  "version": "1.0.0",
+  "description": "Full-stack web application for managing digital signing of rental contracts",
+  "private": true,
+  "scripts": {
+    "docs:dev": "cd docs-site && npm run dev",
+    "docs:build": "cd docs-site && npm run build",
+    "docs:preview": "cd docs-site && npm run preview"
+  },
+  "keywords": [
+    "pdf",
+    "signature",
+    "contract",
+    "digital-signing"
+  ],
+  "author": "",
+  "license": "ISC"
+}
+
+

@@ -1,0 +1,238 @@
+PROJECT CONTEXT
+
+This project is a small web app to manage digital signing of rental contracts (PDFs) for guests (e.g. villa rental in Thailand). The app must be extremely simple for non-technical guests on mobile.
+
+CORE GOAL
+
+Build a full-stack app with:
+
+- An ADMIN flow:
+  - Upload a PDF contract
+  - Visually select where the guest signature should appear on a specific page
+  - Create a “signing session” and generate a public link for the guest
+  - See all sessions and download the final signed PDF once completed
+
+- A GUEST flow:
+  - Open the public signing link from phone or computer
+  - Read the PDF (simple viewer, no fancy features required)
+  - Draw a signature with finger/mouse (canvas)
+  - See a preview of the signed PDF
+  - Confirm the signature
+  - On confirmation, the system saves the signed PDF and marks the session as completed
+
+TECH STACK (MANDATORY)
+
+- Monorepo style, with at least:
+  - /frontend  → React + TypeScript + Vite
+  - /backend   → Node.js + TypeScript + Express
+
+- Frontend:
+  - React + TypeScript
+  - Vite for dev server and build
+  - Use a simple, clean layout (no heavy UI frameworks)
+  - Use pdf.js (pdfjs-dist) or similar to render PDFs for admin (position selection) and guest (read only)
+  - Use a canvas-based signature component (signature_pad or equivalent) for drawing signatures
+
+- Backend:
+  - Node.js + TypeScript
+  - Express for HTTP APIs
+  - Use pdf-lib (preferred) to open the original PDF, draw the signature image on the selected page, and output a new signed PDF
+  - Use filesystem storage for now
+    - e.g. ./storage/original, ./storage/signed
+  - A very simple “database” can be:
+    - in-memory object persisted to a JSON file
+    - or a small local JSON file read/written on each change
+
+DATA MODEL
+
+Define a “SigningSession” entity with at least:
+
+- id: string
+- token: string (public signing token for URL)
+- originalPdfPath: string
+- signedPdfPath?: string
+- guestName?: string
+- guestEmail?: string
+- page: number (PDF page index where signature goes)
+- x: number (signature X coordinate on page)
+- y: number (signature Y coordinate on page)
+- width: number
+- height: number
+- status: "pending" | "signed" | "completed"
+- createdAt: string (ISO)
+- updatedAt: string (ISO)
+
+ROUTES (BACKEND)
+
+Create clear, typed REST endpoints, for example:
+
+- POST /api/upload-pdf
+  - body: { file }
+  - returns: { pdfId, filePath }
+
+- POST /api/create-session
+  - body: { pdfId, guestName?, guestEmail?, page, x, y, width, height }
+  - server:
+    - creates SigningSession
+    - generates random token
+  - returns: { sessionId, token, publicUrl }
+
+- GET /api/session/:token
+  - public guest endpoint
+  - returns: session info (no internal paths), including:
+    - a URL to view the original PDF
+
+- GET /api/admin/sessions
+  - admin list of sessions
+  - returns all sessions with internal info
+
+- POST /api/session/:token/sign
+  - body: { signatureImageBase64 }
+  - server:
+    - loads original PDF
+    - applies signature image at (page, x, y, width, height)
+    - writes signed PDF to disk
+    - updates session.signedPdfPath
+    - sets status to "signed"
+
+- POST /api/session/:token/confirm
+  - marks session as "completed"
+
+- GET /api/session/:id/download-signed
+  - streams the signed PDF if status is "completed"
+
+- GET /api/pdf/:pdfId
+  - streams the original PDF (for viewing in frontend)
+
+Important: keep the code structured so these endpoints can be easily extended later (e.g., auth).
+
+FRONTEND – ADMIN FLOW
+
+Create an /admin route with:
+
+1) PDF Upload step:
+   - File input to upload a PDF
+   - Call /api/upload-pdf
+   - Store pdfId
+
+2) PDF Viewer for position selection:
+   - Render the PDF using pdf.js
+   - Allow click/tap on the page to set signature position
+   - On click:
+     - show a rectangle where the signature will be placed
+     - save page, x, y, width, height in state
+   - Coordinates:
+     - map from canvas coordinates to PDF coordinates (be explicit in code comments)
+
+3) Guest details & Create session:
+   - Inputs:
+     - guestName
+     - guestEmail (optional)
+   - Button “Create Signing Link”
+     - calls /api/create-session with:
+       - pdfId, guestName, guestEmail, page, x, y, width, height
+     - receives { sessionId, token, publicUrl }
+     - show the public URL in a copyable box
+
+4) Sessions list (same /admin page or separate component):
+   - Call /api/admin/sessions
+   - Show:
+     - sessionId
+     - guestName
+     - status
+     - link to open public sign URL
+     - button “Download signed PDF” when available (calls /api/session/:id/download-signed)
+
+FRONTEND – GUEST FLOW
+
+Create a /sign/:token route with this behavior:
+
+- On load:
+  - call /api/session/:token
+  - show the PDF (view only, with simple prev/next or scroll)
+  - clear instructions:
+    - “Please read the contract and sign below when you are ready.”
+
+- Show a signature area:
+  - use signature_pad (or similar) in a responsive canvas
+  - buttons:
+    - “Clear”
+    - “Apply Signature”
+
+- When user taps “Apply Signature”:
+  - send POST /api/session/:token/sign with signatureImageBase64
+  - on success:
+    - fetch a preview of the signed PDF
+    - e.g. show “Preview signed document” with embedded PDF viewer or link
+
+- Show 2 buttons after preview:
+  - “Confirm Signature”
+  - “Clear and Sign Again”
+
+- On “Clear and Sign Again”:
+  - call some endpoint or simply allow re-signing and overwriting the previous signature
+  - keep the flow simple; overwriting the signed PDF is acceptable
+
+- On “Confirm Signature”:
+  - POST /api/session/:token/confirm
+  - show a final message:
+    - “Your signature has been recorded. Thank you.”
+
+UX REQUIREMENTS
+
+- Guest side:
+  - must be mobile friendly
+  - large buttons, large canvas
+  - minimal text:
+    - “Sign below”
+    - “Clear”
+    - “Apply Signature”
+    - “Confirm Signature”
+
+- Admin side:
+  - can be slightly more technical, but still clear
+  - show any error messages from backend in a friendly way
+
+ERROR HANDLING
+
+- If a session token is invalid or expired:
+  - show a clear message on /sign/:token page:
+    - “This signing link is not valid or has expired.”
+
+- If PDF fails to load:
+  - show a simple error message and suggest reloading
+
+DEV & RUN INSTRUCTIONS (FOR CURSOR)
+
+When you generate code, ensure:
+
+- /backend:
+  - has a package.json with scripts:
+    - "dev": "ts-node-dev src/index.ts" (or similar)
+- /frontend:
+  - has a package.json with scripts:
+    - "dev": "vite"
+
+At the root, optionally:
+- add a README that explains:
+  - how to run backend: `cd backend && npm install && npm run dev`
+  - how to run frontend: `cd frontend && npm install && npm run dev`
+  - default URLs:
+    - Admin: http://localhost:5173/admin
+    - Guest sign: http://localhost:5173/sign/:token
+
+CODING STYLE
+
+- Use TypeScript interfaces for all request/response payloads.
+- Add comments where coordinate mapping and PDF drawing logic happen.
+- Prefer clarity over cleverness.
+- Keep file structure clean:
+  - backend/src/routes
+  - backend/src/services
+  - backend/src/models
+  - frontend/src/pages
+  - frontend/src/components
+
+Always keep in mind:
+- I need to be able to understand, run and extend this project easily.
+- The priority is a working end-to-end flow: upload → configure → link → guest sign → confirm → download signed PDF.
