@@ -38,6 +38,13 @@ Diagrammi visuali e colorati per comprendere facilmente il sistema:
 - Funzionalità mobile
 - Casi d'uso pratici
 
+## Deployment Guides
+
+### 🚀 Production Deployment
+- **[Deploy on RunCloud + UpCloud](./DEPLOY_RUNCLOUD.md)** ⭐ **Recommended if you have a VPS** - Very cost-effective ($0-8/month)
+- **[Deploy on Railway](./DEPLOY.md)** - Easy setup, full-stack support, $15-30/month
+- [Deployment Architecture](./deployment.md) - Deployment diagrams and models
+
 ## Diagrams
 
 ### Architecture & Design
