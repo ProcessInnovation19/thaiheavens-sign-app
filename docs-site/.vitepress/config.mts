@@ -60,6 +60,13 @@ export default withMermaid({
           { text: 'System Lifecycle', link: '/system_lifecycle' },
           { text: 'Deployment', link: '/deployment' }
         ]
+      },
+      {
+        text: 'Deployment Guides',
+        items: [
+          { text: 'Deploy on Railway', link: '/DEPLOY' },
+          { text: 'Deploy on RunCloud', link: '/DEPLOY_RUNCLOUD' }
+        ]
       }
     ],
     

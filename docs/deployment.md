@@ -28,18 +28,30 @@ graph TB
 
 ### Deployment Models
 
-**Option 1: Separate Hosting**
+**Option 1: Railway (Cloud Platform)**
+- Full-stack deployment on Railway
+- Automatic builds from GitHub
+- Pay-as-you-go pricing ($15-30/month)
+- See: [Deploy on Railway Guide](../DEPLOY.md)
+
+**Option 2: RunCloud + UpCloud (VPS)**
+- Deploy on your own VPS server
+- Managed via RunCloud dashboard
+- Very cost-effective ($0-8/month if you already have a server)
+- See: [Deploy on RunCloud Guide](../DEPLOY_RUNCLOUD.md)
+
+**Option 3: Separate Hosting**
 - Frontend: Static hosting (Vercel, Netlify)
 - Backend: Node.js hosting (Heroku, Railway)
 - Database: Cloud database
 - Storage: Cloud storage (S3, etc.)
 
-**Option 2: Single Server**
+**Option 4: Single Server**
 - Express serves frontend and backend
 - File system storage
 - Single deployment
 
-**Option 3: Containerized**
+**Option 5: Containerized**
 - Docker containers
 - Reverse proxy (Nginx)
 - Container orchestration

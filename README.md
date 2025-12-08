@@ -182,12 +182,19 @@ ThaiHeavensSignApp/
 
 ## Deployment
 
-Per mettere online l'applicazione, consulta la [Guida al Deploy](./DEPLOY.md).
+Per mettere online l'applicazione, consulta le guide di deploy:
 
-**Opzioni consigliate:**
-- **Railway** (consigliato) - Facile setup, supporto full-stack, piano gratuito
+**Opzioni disponibili:**
+- **[Deploy su RunCloud + UpCloud](./DEPLOY_RUNCLOUD.md)** ⭐ **Consigliato se hai già un server** - Molto economico ($0-8/mese)
+- **[Deploy su Railway](./DEPLOY.md)** - Facile setup, supporto full-stack, $15-30/mese
 - **Render** - Alternativa a Railway, simile facilità
-- **Vercel + Railway** - Frontend su Vercel, Backend su Railway
+
+**Quick Deploy su RunCloud (se hai UpCloud):**
+1. Segui la [Guida RunCloud](./DEPLOY_RUNCLOUD.md)
+2. Clona il repository sul server
+3. Configura Node.js App in RunCloud
+4. Configura Nginx per proxy
+5. Avvia l'applicazione
 
 **Quick Deploy su Railway:**
 1. Crea account su [railway.app](https://railway.app)
