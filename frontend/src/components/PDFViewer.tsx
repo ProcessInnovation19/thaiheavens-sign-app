@@ -11,6 +11,7 @@ interface PDFViewerProps {
   readOnly?: boolean;
   onViewportReady?: (viewport: { width: number; height: number; scale: number }) => void;
   onPositionUpdate?: (position: { x: number; y: number; width: number; height: number; pdfX: number; pdfY: number; pdfWidth: number; pdfHeight: number }) => void;
+  fullscreen?: boolean; // New prop for fullscreen mode
 }
 
 export default function PDFViewer({
@@ -21,6 +22,7 @@ export default function PDFViewer({
   readOnly = false,
   onViewportReady,
   onPositionUpdate,
+  fullscreen = false,
 }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,6 +47,24 @@ export default function PDFViewer({
       setCurrentPage(selectedPage);
     }
   }, [selectedPage]);
+
+  // Listen for zoom events from parent (mobile fullscreen mode)
+  useEffect(() => {
+    const handleZoomIn = () => {
+      setZoom((z) => Math.min(4, z + 0.25));
+    };
+    const handleZoomOut = () => {
+      setZoom((z) => Math.max(0.5, z - 0.25));
+    };
+    
+    window.addEventListener('pdfZoomIn', handleZoomIn);
+    window.addEventListener('pdfZoomOut', handleZoomOut);
+    
+    return () => {
+      window.removeEventListener('pdfZoomIn', handleZoomIn);
+      window.removeEventListener('pdfZoomOut', handleZoomOut);
+    };
+  }, []);
 
   const pdfRef = useRef<any>(null);
   const renderTaskRef = useRef<any>(null);
@@ -463,6 +483,93 @@ export default function PDFViewer({
 
   // Detect if mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
+  // Fullscreen mode: no controls, PDF fills screen
+  if (fullscreen && isMobile) {
+    return (
+      <div className="w-full h-full relative flex items-center justify-center" style={{ height: '100%', width: '100%' }}>
+        <div 
+          ref={containerRef}
+          className="flex justify-center bg-slate-100 rounded-lg border border-slate-200 relative flex-1 h-full overflow-hidden" 
+          style={{ 
+            cursor: isPanning ? 'grabbing' : 'grab',
+            touchAction: 'none'
+          }}
+          onMouseDown={(e) => {
+            if (readOnly && e.button === 0) {
+              setIsPanning(true);
+              setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+            }
+          }}
+          onMouseMove={(e) => {
+            if (readOnly && isPanning && panStart) {
+              setPanOffset({
+                x: e.clientX - panStart.x,
+                y: e.clientY - panStart.y,
+              });
+            }
+          }}
+          onMouseUp={() => {
+            if (readOnly) {
+              setIsPanning(false);
+              setPanStart(null);
+            }
+          }}
+          onMouseLeave={() => {
+            if (readOnly) {
+              setIsPanning(false);
+              setPanStart(null);
+            }
+          }}
+          onTouchStart={(e) => {
+            if (readOnly && e.touches.length === 1) {
+              const touch = e.touches[0];
+              setIsPanning(true);
+              setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+            }
+          }}
+          onTouchMove={(e) => {
+            if (readOnly && isPanning && panStart && e.touches.length === 1) {
+              e.preventDefault();
+              const touch = e.touches[0];
+              setPanOffset({
+                x: touch.clientX - panStart.x,
+                y: touch.clientY - panStart.y,
+              });
+            }
+          }}
+          onTouchEnd={() => {
+            if (readOnly) {
+              setIsPanning(false);
+              setPanStart(null);
+            }
+          }}
+        >
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl z-10">
+              <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-200 border-t-blue-600"></div>
+            </div>
+          )}
+          <div 
+            className="relative"
+            style={readOnly ? {
+              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+              transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+            } : {}}
+          >
+            <canvas
+              ref={canvasRef}
+              className="max-w-full h-auto rounded-lg shadow-lg"
+              style={{
+                maxHeight: '100vh',
+                maxWidth: '100vw',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="w-full relative">

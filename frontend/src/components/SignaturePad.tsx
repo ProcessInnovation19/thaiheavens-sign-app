@@ -161,15 +161,19 @@ export default function SignaturePadComponent({
   };
 
   return (
-    <div className={`w-full h-full flex flex-col items-center justify-center ${fullscreen ? 'h-full' : ''}`}>
-      <div className={`bg-white ${fullscreen ? 'rounded-none border-0 shadow-none h-full w-full' : 'rounded-xl shadow-lg border-2 border-slate-300'} overflow-hidden relative flex items-center justify-center`} style={fullscreen ? { height: '100%', width: '100%' } : { padding: '12px' }}>
-        <div className="relative w-full h-full flex items-center justify-center" style={{ height: fullscreen ? '100%' : `${height}px`, width: '100%', maxWidth: fullscreen ? '100%' : '100%' }}>
+    <div className={`w-full h-full flex flex-col items-center justify-center ${fullscreen ? 'h-full' : ''}`} style={fullscreen ? { height: '100%', width: '100%' } : {}}>
+      <div className={`bg-white ${fullscreen ? 'rounded-none border-0 shadow-none' : 'rounded-xl shadow-lg border-2 border-slate-300'} overflow-hidden relative flex items-center justify-center`} style={fullscreen ? { height: '100%', width: '100%', maxWidth: '100%', maxHeight: '100%' } : { padding: '12px' }}>
+        <div className="relative flex items-center justify-center" style={{ 
+          height: fullscreen ? '100%' : `${height}px`, 
+          width: fullscreen ? 'auto' : '100%',
+          maxHeight: fullscreen ? '100%' : 'none',
+          maxWidth: fullscreen ? '100%' : '100%',
+        }}>
           <canvas
             ref={canvasRef}
-            className="w-full h-full"
             style={{
-              height: '100%',
-              width: '100%',
+              height: fullscreen ? '100%' : '100%',
+              width: fullscreen ? 'auto' : '100%',
               maxHeight: '100%',
               maxWidth: '100%',
               objectFit: 'contain',
