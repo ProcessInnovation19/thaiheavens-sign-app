@@ -522,7 +522,6 @@ export default function SignPage() {
                 )}
               </div>
             )}
-          </>
         )}
 
         {/* Step: Preview */}
