@@ -40,6 +40,8 @@ export default function PDFViewer({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
+  const [isPinching, setIsPinching] = useState(false);
+  const [pinchStart, setPinchStart] = useState<{ distance: number; zoom: number; center: { x: number; y: number } } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -522,26 +524,88 @@ export default function PDFViewer({
             }
           }}
           onTouchStart={(e) => {
-            if (readOnly && e.touches.length === 1) {
-              const touch = e.touches[0];
-              setIsPanning(true);
-              setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+            if (readOnly) {
+              if (e.touches.length === 1) {
+                // Single touch: pan
+                const touch = e.touches[0];
+                setIsPanning(true);
+                setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+                setIsPinching(false);
+              } else if (e.touches.length === 2) {
+                // Two touches: pinch-to-zoom
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const distance = Math.hypot(
+                  touch2.clientX - touch1.clientX,
+                  touch2.clientY - touch1.clientY
+                );
+                const centerX = (touch1.clientX + touch2.clientX) / 2;
+                const centerY = (touch1.clientY + touch2.clientY) / 2;
+                
+                setIsPinching(true);
+                setIsPanning(false);
+                setPinchStart({
+                  distance,
+                  zoom,
+                  center: { x: centerX, y: centerY }
+                });
+              }
             }
           }}
           onTouchMove={(e) => {
-            if (readOnly && isPanning && panStart && e.touches.length === 1) {
-              e.preventDefault();
-              const touch = e.touches[0];
-              setPanOffset({
-                x: touch.clientX - panStart.x,
-                y: touch.clientY - panStart.y,
-              });
+            if (readOnly) {
+              if (isPinching && pinchStart && e.touches.length === 2) {
+                // Pinch-to-zoom
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const distance = Math.hypot(
+                  touch2.clientX - touch1.clientX,
+                  touch2.clientY - touch1.clientY
+                );
+                
+                const scale = distance / pinchStart.distance;
+                const newZoom = Math.max(0.5, Math.min(4, pinchStart.zoom * scale));
+                setZoom(newZoom);
+                
+                // Adjust pan to zoom towards the center of the pinch
+                const centerX = (touch1.clientX + touch2.clientX) / 2;
+                const centerY = (touch1.clientY + touch2.clientY) / 2;
+                const deltaX = centerX - pinchStart.center.x;
+                const deltaY = centerY - pinchStart.center.y;
+                
+                setPanOffset({
+                  x: panOffset.x + deltaX * (1 - scale),
+                  y: panOffset.y + deltaY * (1 - scale),
+                });
+              } else if (isPanning && panStart && e.touches.length === 1) {
+                // Single touch pan
+                e.preventDefault();
+                const touch = e.touches[0];
+                setPanOffset({
+                  x: touch.clientX - panStart.x,
+                  y: touch.clientY - panStart.y,
+                });
+              }
             }
           }}
-          onTouchEnd={() => {
+          onTouchEnd={(e) => {
             if (readOnly) {
-              setIsPanning(false);
-              setPanStart(null);
+              if (e.touches.length === 0) {
+                // All touches ended
+                setIsPanning(false);
+                setPanStart(null);
+                setIsPinching(false);
+                setPinchStart(null);
+              } else if (e.touches.length === 1 && isPinching) {
+                // Switched from pinch to pan
+                setIsPinching(false);
+                setPinchStart(null);
+                const touch = e.touches[0];
+                setIsPanning(true);
+                setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+              }
             }
           }}
         >
@@ -727,26 +791,88 @@ export default function PDFViewer({
           }
         }}
         onTouchStart={(e) => {
-          if (readOnly && e.touches.length === 1) {
-            const touch = e.touches[0];
-            setIsPanning(true);
-            setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+          if (readOnly) {
+            if (e.touches.length === 1) {
+              // Single touch: pan
+              const touch = e.touches[0];
+              setIsPanning(true);
+              setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+              setIsPinching(false);
+            } else if (e.touches.length === 2) {
+              // Two touches: pinch-to-zoom
+              e.preventDefault();
+              const touch1 = e.touches[0];
+              const touch2 = e.touches[1];
+              const distance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+              );
+              const centerX = (touch1.clientX + touch2.clientX) / 2;
+              const centerY = (touch1.clientY + touch2.clientY) / 2;
+              
+              setIsPinching(true);
+              setIsPanning(false);
+              setPinchStart({
+                distance,
+                zoom,
+                center: { x: centerX, y: centerY }
+              });
+            }
           }
         }}
         onTouchMove={(e) => {
-          if (readOnly && isPanning && panStart && e.touches.length === 1) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            setPanOffset({
-              x: touch.clientX - panStart.x,
-              y: touch.clientY - panStart.y,
-            });
+          if (readOnly) {
+            if (isPinching && pinchStart && e.touches.length === 2) {
+              // Pinch-to-zoom
+              e.preventDefault();
+              const touch1 = e.touches[0];
+              const touch2 = e.touches[1];
+              const distance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+              );
+              
+              const scale = distance / pinchStart.distance;
+              const newZoom = Math.max(0.5, Math.min(4, pinchStart.zoom * scale));
+              setZoom(newZoom);
+              
+              // Adjust pan to zoom towards the center of the pinch
+              const centerX = (touch1.clientX + touch2.clientX) / 2;
+              const centerY = (touch1.clientY + touch2.clientY) / 2;
+              const deltaX = centerX - pinchStart.center.x;
+              const deltaY = centerY - pinchStart.center.y;
+              
+              setPanOffset({
+                x: panOffset.x + deltaX * (1 - scale),
+                y: panOffset.y + deltaY * (1 - scale),
+              });
+            } else if (isPanning && panStart && e.touches.length === 1) {
+              // Single touch pan
+              e.preventDefault();
+              const touch = e.touches[0];
+              setPanOffset({
+                x: touch.clientX - panStart.x,
+                y: touch.clientY - panStart.y,
+              });
+            }
           }
         }}
-        onTouchEnd={() => {
+        onTouchEnd={(e) => {
           if (readOnly) {
-            setIsPanning(false);
-            setPanStart(null);
+            if (e.touches.length === 0) {
+              // All touches ended
+              setIsPanning(false);
+              setPanStart(null);
+              setIsPinching(false);
+              setPinchStart(null);
+            } else if (e.touches.length === 1 && isPinching) {
+              // Switched from pinch to pan
+              setIsPinching(false);
+              setPinchStart(null);
+              const touch = e.touches[0];
+              setIsPanning(true);
+              setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+            }
           }
         }}
       >
