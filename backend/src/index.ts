@@ -33,37 +33,42 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/calibrate', calibrateRoutes);
 
-// Serve frontend static files in production
-if (process.env.NODE_ENV === 'production') {
-  const frontendPath = path.join(projectRoot, 'frontend/dist');
-  const docsPath = path.join(projectRoot, 'docs-site/.vitepress/dist');
+// Serve frontend static files (both production and when served by Express)
+const frontendPath = path.join(projectRoot, 'frontend/dist');
+const docsPath = path.join(projectRoot, 'frontend/public/docs');
+
+// Serve documentation
+if (fs.existsSync(docsPath)) {
+  app.use('/docs', express.static(docsPath));
+  // Handle client-side routing for VitePress
+  app.get('/docs/*', (req, res) => {
+    const filePath = path.join(docsPath, req.path.replace('/docs', ''));
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      return res.sendFile(filePath);
+    }
+    res.sendFile(path.join(docsPath, 'index.html'));
+  });
+}
+
+// Serve frontend static files
+if (fs.existsSync(frontendPath)) {
+  app.use(express.static(frontendPath));
   
-  // Serve documentation
-  if (fs.existsSync(docsPath)) {
-    app.use('/docs', express.static(docsPath));
-    // Handle client-side routing for VitePress
-    app.get('/docs/*', (req, res) => {
-      res.sendFile(path.join(docsPath, 'index.html'));
-    });
-  }
-  
-  // Serve frontend static files
-  if (fs.existsSync(frontendPath)) {
-    app.use(express.static(frontendPath));
-    
-    // Handle client-side routing for React (SPA)
-    app.get('*', (req, res) => {
-      // Don't serve index.html for API routes
-      if (req.path.startsWith('/api') || req.path.startsWith('/docs')) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      res.sendFile(path.join(frontendPath, 'index.html'));
-    });
-  }
+  // Handle client-side routing for React (SPA)
+  app.get('*', (req, res) => {
+    // Don't serve index.html for API routes or docs
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    if (req.path.startsWith('/docs')) {
+      return; // Already handled above
+    }
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
 } else {
-  // Development mode
+  // Fallback if frontend not built
   app.get('/', (req, res) => {
-    res.json({ message: 'ThaiHeavens Backend API is running!' });
+    res.json({ message: 'ThaiHeavens Backend API is running! Frontend not found.' });
   });
 }
 
