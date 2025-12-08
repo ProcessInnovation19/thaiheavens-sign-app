@@ -238,12 +238,56 @@ module.exports = {
 };
 ```
 
-## Step 9: Aggiornamenti Futuri
+## Step 9: Configurare Deployment Script (Webhook)
+
+RunCloud supporta deployment automatico tramite webhook Git. Configura lo script nella sezione "Deployment script" della Web App:
+
+1. Vai su RunCloud Dashboard → Web Apps → `thaiheavens-sign-app-web` → Git → "Deployment script"
+2. Abilita "Enable deployment script"
+3. Inserisci questo script:
+
+```bash
+set -e
+
+# NOTE: Environment variables must NOT be stored here. Use RunCloud Environment Variables instead.
+
+# Update code from Git
+git pull origin main || git merge origin/main
+
+# Backend: Install dependencies and build
+cd backend
+npm install
+npm run build
+cd ..
+
+# Frontend: Install dependencies and build
+cd frontend
+npm install
+npm run build
+cd ..
+
+# Documentation: Build and copy to frontend
+cd docs-site
+npm install
+npm run build
+npm run copy-to-frontend
+cd ..
+
+# Restart Node.js application (using PM2 if available)
+if command -v pm2 &> /dev/null; then
+    pm2 restart thaiheavens-sign-app || pm2 start backend/dist/index.js --name thaiheavens-sign-app
+fi
+```
+
+4. Salva lo script
+5. Ogni volta che fai push su GitHub, RunCloud eseguirà automaticamente questo script
+
+## Step 10: Aggiornamenti Futuri
 
 Per aggiornare l'applicazione:
 
 ```bash
-# Sul server
+# Sul server (o tramite Git push se hai configurato il webhook)
 cd /home/runcloud/thaiheavens-sign-app
 
 # Pull delle modifiche
