@@ -8,6 +8,7 @@ import {
   confirmSession,
 } from '../services/api';
 import { SessionPublicInfo } from '../types';
+import buildInfo from '../build-info.json';
 
 type SignStep = 'loading' | 'view' | 'sign' | 'preview' | 'confirmed';
 
@@ -179,11 +180,11 @@ export default function SignPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img 
-                  src={`${typeof window !== 'undefined' ? window.location.origin : 'https://sign.process-innovation.it'}/images/logo.png?v=${(typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev-' + Date.now().toString())}`}
+                  src={`${typeof window !== 'undefined' ? window.location.origin : 'https://sign.process-innovation.it'}/images/logo.png?v=${buildInfo.timestamp}`}
                   alt="Thai Heavens" 
                   className="h-16 sm:h-20 w-auto object-contain"
                   style={{ maxHeight: '80px', display: 'block', minHeight: '40px' }}
-                  key={`logo-${typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev-' + Date.now()}`}
+                  key={`logo-${buildInfo.timestamp}`}
                   onError={(e) => {
                     // Try fallback URLs if server URL doesn't work
                     const img = e.target as HTMLImageElement;
@@ -192,10 +193,9 @@ export default function SignPage() {
                     
                     // Try absolute URL with current origin first
                     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sign.process-innovation.it';
-                    const buildTimestamp = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev-' + Date.now().toString();
                     if (!currentSrc.includes('thaiheavens.com')) {
                       // Try thaiheavens.com with cache busting
-                      img.src = `https://thaiheavens.com/logo.png?v=${buildTimestamp}`;
+                      img.src = `https://thaiheavens.com/logo.png?v=${buildInfo.timestamp}`;
                       console.log('Trying thaiheavens.com logo');
                     } else {
                       // All fallbacks failed, hide image

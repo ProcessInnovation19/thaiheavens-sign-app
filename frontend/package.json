@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-build-info.js",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "docs:build": "cd ../docs-site && npm run build && npm run copy-to-frontend"

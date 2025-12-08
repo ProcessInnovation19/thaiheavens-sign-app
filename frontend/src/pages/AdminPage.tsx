@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PDFViewer from '../components/PDFViewer';
 import { uploadPdf, createSession, getAllSessions, downloadSignedPdf, deleteSession, sendEmail } from '../services/api';
 import { SigningSession } from '../types';
+import buildInfo from '../build-info.json';
 
 type Step = 'sessions' | 'upload' | 'position' | 'create';
 
@@ -294,18 +295,17 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src={`${typeof window !== 'undefined' ? window.location.origin : ''}/images/logo.png?v=${(typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev-' + Date.now().toString())}`}
+                src={`${typeof window !== 'undefined' ? window.location.origin : ''}/images/logo.png?v=${buildInfo.timestamp}`}
                 alt="Thai Heavens" 
                 className="h-20 w-auto object-contain"
                 style={{ maxHeight: '80px' }}
-                key={`logo-${typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev-' + Date.now()}`}
+                key={`logo-${buildInfo.timestamp}`}
                 onError={(e) => {
                   // Try fallback URL if local file doesn't exist
                   const img = e.target as HTMLImageElement;
                   const currentSrc = img.src;
-                  const buildTimestamp = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev-' + Date.now().toString();
                   if (!currentSrc.includes('thaiheavens.com')) {
-                    img.src = `https://thaiheavens.com/logo.png?v=${buildTimestamp}`;
+                    img.src = `https://thaiheavens.com/logo.png?v=${buildInfo.timestamp}`;
                   } else {
                     img.style.display = 'none';
                   }
