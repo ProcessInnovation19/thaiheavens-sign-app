@@ -273,9 +273,11 @@ npm run build
 npm run copy-to-frontend
 cd ..
 
-# Restart Node.js application (using PM2 if available)
+# Restart Node.js application (using PM2)
 if command -v pm2 &> /dev/null; then
-    pm2 restart thaiheavens-sign-app || pm2 start backend/dist/index.js --name thaiheavens-sign-app
+    pm2 restart thaiheavens-backend || pm2 start ecosystem.config.js
+else
+    echo "PM2 not found. Please restart the application manually."
 fi
 ```
 

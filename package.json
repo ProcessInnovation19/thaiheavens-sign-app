@@ -6,7 +6,9 @@
   "scripts": {
     "docs:dev": "cd docs-site && npm run dev",
     "docs:build": "cd docs-site && npm run build",
-    "docs:preview": "cd docs-site && npm run preview"
+    "docs:preview": "cd docs-site && npm run preview",
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./deploy.ps1",
+    "deploy:message": "powershell -ExecutionPolicy Bypass -File ./deploy.ps1 -Message"
   },
   "keywords": [
     "pdf",
