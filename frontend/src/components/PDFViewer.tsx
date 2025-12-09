@@ -327,21 +327,15 @@ export default function PDFViewer({
           const currentCenterXRelative = currentCenterX - containerRect.left;
           const currentCenterYRelative = currentCenterY - containerRect.top;
           
-          // Calculate zoom change
-          const zoomChange = clampedZoom / baseZoom;
-          
-          // Calculate the point in the content that corresponds to the pinch center
+          // The center point in content coordinates (where we want to zoom from)
           const centerXInContent = pinchStartRef.current.center.x;
           const centerYInContent = pinchStartRef.current.center.y;
           
-          // When zooming, to keep the center point under the fingers, we need to adjust translate
-          // Formula: newTranslate = oldTranslate + (centerInContent * (1 - zoomChange))
-          const translateDeltaX = centerXInContent * (1 - zoomChange);
-          const translateDeltaY = centerYInContent * (1 - zoomChange);
-          
-          // Calculate new translate position
-          let newTranslateX = pinchStartRef.current.translateX + translateDeltaX;
-          let newTranslateY = pinchStartRef.current.translateY + translateDeltaY;
+          // Calculate new translate to keep the center point under the fingers
+          // Formula: newTranslate = centerInViewport - (centerInContent * newZoom)
+          // This ensures the point in content stays at the same viewport position
+          let newTranslateX = currentCenterXRelative - (centerXInContent * clampedZoom);
+          let newTranslateY = currentCenterYRelative - (centerYInContent * clampedZoom);
           
           // Clamp translate to boundaries (prevent moving content outside viewport)
           const viewportWidth = containerRect.width;
@@ -362,8 +356,9 @@ export default function PDFViewer({
           newTranslateX = Math.max(minTranslateX, Math.min(maxTranslateX, newTranslateX));
           newTranslateY = Math.max(minTranslateY, Math.min(maxTranslateY, newTranslateY));
           
-          // Apply zoom with center point as transform origin
-          container.style.transformOrigin = `${currentCenterXRelative}px ${currentCenterYRelative}px`;
+          // Apply transform (translate and scale together)
+          // Use top-left as origin so translate works correctly
+          container.style.transformOrigin = 'top left';
           container.style.transform = `translate3d(${newTranslateX}px, ${newTranslateY}px, 0) scale(${clampedZoom})`;
           
           // Update refs
