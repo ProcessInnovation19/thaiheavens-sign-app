@@ -331,6 +331,12 @@ export default function PDFViewer({
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!readOnly) return;
     
+    // Cancel any pending zoom updates
+    if (zoomUpdateRef.current !== null) {
+      cancelAnimationFrame(zoomUpdateRef.current);
+      zoomUpdateRef.current = null;
+    }
+    
     if (e.touches.length === 0) {
       setIsPanning(false);
       setPanStart(null);
