@@ -277,9 +277,28 @@ export default function PDFViewer({
           center: { x: 0, y: 0 }, // Not used, but kept for compatibility
           scrollTop: parentContainer ? parentContainer.scrollTop : 0,
         };
+      } else if (e.touches.length === 1) {
+        // Single finger: handle manual pan when zoomed (like a zoomed webpage)
+        const currentZoom = currentVisualZoomRef.current;
+        const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+        const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
+        
+        // Only handle manual pan if zoomed (zoom > 1)
+        if (zoom > 1) {
+          e.preventDefault(); // Prevent default to handle pan manually
+          const parentContainer = container.parentElement;
+          if (parentContainer) {
+            isPanningRef.current = true;
+            panStartRef.current = {
+              x: e.touches[0].clientX,
+              y: e.touches[0].clientY,
+              scrollLeft: parentContainer.scrollLeft,
+              scrollTop: parentContainer.scrollTop,
+            };
+          }
+        }
+        // If not zoomed, let browser handle native scroll
       }
-      // Single finger: let browser handle native scroll (works at any zoom level)
-      // Don't prevent default, don't start manual pan - just let it scroll naturally
     };
 
     // Native touch move handler - ULTRA-FAST, direct DOM manipulation
@@ -300,9 +319,22 @@ export default function PDFViewer({
         currentVisualZoomRef.current = clampedZoom;
         container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
         container.style.transformOrigin = 'top center';
+      } else if (isPanningRef.current && panStartRef.current && e.touches.length === 1 && !isPinchingRef.current) {
+        // During manual pan (single finger drag when zoomed), handle scroll manually
+        // This allows simultaneous vertical and horizontal movement like a zoomed webpage
+        e.preventDefault();
+        e.stopPropagation();
+        const deltaX = panStartRef.current.x - e.touches[0].clientX;
+        const deltaY = panStartRef.current.y - e.touches[0].clientY;
+        const parentContainer = container.parentElement;
+        if (parentContainer) {
+          // Handle both horizontal and vertical scroll simultaneously
+          // This gives the same feel as scrolling a zoomed webpage
+          parentContainer.scrollLeft = panStartRef.current.scrollLeft + deltaX;
+          parentContainer.scrollTop = panStartRef.current.scrollTop + deltaY;
+        }
       }
-      // Single finger: let browser handle native scroll naturally (works at any zoom level)
-      // Don't prevent default - allow native scrolling
+      // If not pinching or panning, let browser handle native scroll
     };
 
     // Native touch end handler
@@ -319,9 +351,25 @@ export default function PDFViewer({
         isPinchingRef.current = false;
         // Keep pinchStart for next pinch
       } else if (e.touches.length === 1 && isPinchingRef.current) {
-        // Switched from pinch (2 fingers) to single finger - let browser handle scroll
+        // Switched from pinch (2 fingers) to single finger
         isPinchingRef.current = false;
-        // Don't start manual pan - let native scroll work
+        // Start manual pan if zoomed
+        const currentZoom = currentVisualZoomRef.current;
+        const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+        const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
+        
+        if (zoom > 1) {
+          const parentContainer = container.parentElement;
+          if (parentContainer) {
+            isPanningRef.current = true;
+            panStartRef.current = {
+              x: e.touches[0].clientX,
+              y: e.touches[0].clientY,
+              scrollLeft: parentContainer.scrollLeft,
+              scrollTop: parentContainer.scrollTop,
+            };
+          }
+        }
       }
     };
 
