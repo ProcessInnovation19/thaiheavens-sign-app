@@ -401,12 +401,15 @@ export default function PDFViewer({
         {/* Pages container - Google PDF Reader style */}
         <div
           ref={pagesContainerRef}
-          className="flex-1 overflow-y-auto w-full"
+          className="flex-1 w-full"
           style={{
-            touchAction: readOnly ? 'pan-y pinch-zoom' : 'auto',
+            touchAction: readOnly ? (zoom > 1 ? 'pan-x pan-y pinch-zoom' : 'pan-y pinch-zoom') : 'auto',
             WebkitOverflowScrolling: 'touch',
             height: '100%',
             maxHeight: '100dvh',
+            overflow: readOnly ? (zoom > 1 ? 'auto' : 'y-auto') : 'auto',
+            overflowX: readOnly ? (zoom > 1 ? 'auto' : 'hidden') : 'auto',
+            overflowY: 'auto',
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -436,8 +439,11 @@ export default function PDFViewer({
           ref={pagesContainerRef}
           className="w-full"
           style={readOnly ? {
-            touchAction: 'pan-y pinch-zoom',
+            touchAction: zoom > 1 ? 'pan-x pan-y pinch-zoom' : 'pan-y pinch-zoom',
             WebkitOverflowScrolling: 'touch',
+            overflow: zoom > 1 ? 'auto' : 'y-auto',
+            overflowX: zoom > 1 ? 'auto' : 'hidden',
+            overflowY: 'auto',
           } : {}}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}

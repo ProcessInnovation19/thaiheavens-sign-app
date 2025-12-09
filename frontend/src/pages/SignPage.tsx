@@ -285,7 +285,7 @@ export default function SignPage() {
         </header>
       )}
 
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-4xl">
+      <div className={`container mx-auto max-w-4xl ${showPdfViewer && typeof window !== 'undefined' && window.innerWidth < 768 ? 'px-0 py-0' : 'px-2 sm:px-4 py-4 sm:py-8'}`}>
         {/* Error Alert */}
         {error && (
           <div className="mb-6 animate-slide-up">
