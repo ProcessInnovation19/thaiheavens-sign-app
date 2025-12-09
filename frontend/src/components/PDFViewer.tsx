@@ -209,19 +209,22 @@ export default function PDFViewer({
               const defaultWidth = 200;
               const defaultHeight = 100;
               
-              // Center the box on click position (using canvas coordinates directly)
+              // Center the box on click position (using canvas coordinates directly, like AdminPage)
               if (onPositionUpdate && pagesRef.current[pageNum - 1]) {
                 const pageInfo = pagesRef.current[pageNum - 1];
-                // Use canvas coordinates directly (like AdminPage does)
-                // The box will be positioned relative to the canvas position in container
-                const boxX = (e.clientX - rect.left) - defaultWidth / 2;
-                const boxY = (e.clientY - rect.top) - defaultHeight / 2;
+                // Use canvasX and canvasY directly (like AdminPage does)
+                // These are the coordinates in the canvas coordinate system
+                const boxX = canvasX - defaultWidth / 2;
+                const boxY = canvasY - defaultHeight / 2;
                 
-                // Convert to PDF coordinates
-                // Scale factor from canvas display to PDF (1.0 scale)
-                const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
-                const pdfBoxX = (boxX * pdfScaleRatio);
-                const pdfBoxY = ((pageInfo.viewport.height - boxY - defaultHeight) * pdfScaleRatio);
+                // Convert to PDF coordinates (scale 1.0)
+                // AdminPage uses scale 1.5 for display, so we need to convert
+                const displayScale = pageInfo.viewport.scale || 1;
+                const pdfScaleRatio = 1.0 / displayScale;
+                const pdfWidth = defaultWidth * pdfScaleRatio;
+                const pdfHeight = defaultHeight * pdfScaleRatio;
+                const pdfBoxX = (canvasX * pdfScaleRatio) - pdfWidth / 2;
+                const pdfBoxY = (canvasY * pdfScaleRatio) - pdfHeight / 2;
                 
                 onPositionUpdate({
                   x: boxX,
@@ -230,8 +233,8 @@ export default function PDFViewer({
                   height: defaultHeight,
                   pdfX: pdfBoxX,
                   pdfY: pdfBoxY,
-                  pdfWidth: defaultWidth * pdfScaleRatio,
-                  pdfHeight: defaultHeight * pdfScaleRatio,
+                  pdfWidth: pdfWidth,
+                  pdfHeight: pdfHeight,
                 });
               }
               
@@ -276,7 +279,7 @@ export default function PDFViewer({
       // Check if mouse is over the canvas
       if (e.clientX >= canvasRect.left && e.clientX <= canvasRect.right &&
           e.clientY >= canvasRect.top && e.clientY <= canvasRect.bottom) {
-        // Calculate position relative to container
+        // Calculate position relative to container for the cursor rectangle
         const canvasOffsetX = canvasRect.left - containerRect.left;
         const canvasOffsetY = canvasRect.top - containerRect.top;
         const mouseXInCanvas = e.clientX - canvasRect.left;
@@ -530,24 +533,35 @@ export default function PDFViewer({
                   const canvasOffsetX = containerRect ? canvasRect.left - containerRect.left : 0;
                   const canvasOffsetY = containerRect ? canvasRect.top - containerRect.top : 0;
                   
+                  // Convert canvas coordinates to container coordinates
+                  // selectedPosition.x and y are in canvas coordinates
+                  // We need to convert them to container coordinates
+                  const scaleX = canvasRect.width / canvas.width;
+                  const scaleY = canvasRect.height / canvas.height;
+                  const boxXInContainer = canvasOffsetX + (selectedPosition.x * scaleX);
+                  const boxYInContainer = canvasOffsetY + (selectedPosition.y * scaleY);
+                  
                   return (
                     <div
                       ref={signatureBoxRef}
                       onMouseDown={(e) => {
                         if (e.target === resizeHandleRef.current) return;
+                        e.preventDefault();
                         setIsDragging(true);
                         const canvasRect = canvas.getBoundingClientRect();
+                        const scaleX = canvasRect.width / canvas.width;
+                        const scaleY = canvasRect.height / canvas.height;
                         setDragStart({
-                          x: e.clientX - canvasRect.left - selectedPosition.x,
-                          y: e.clientY - canvasRect.top - selectedPosition.y,
+                          x: (e.clientX - canvasRect.left) / scaleX - selectedPosition.x,
+                          y: (e.clientY - canvasRect.top) / scaleY - selectedPosition.y,
                         });
                       }}
                       style={{
                         position: 'absolute',
-                        left: `${canvasOffsetX + selectedPosition.x}px`,
-                        top: `${canvasOffsetY + selectedPosition.y}px`,
-                        width: `${selectedPosition.width}px`,
-                        height: `${selectedPosition.height}px`,
+                        left: `${boxXInContainer}px`,
+                        top: `${boxYInContainer}px`,
+                        width: `${selectedPosition.width * scaleX}px`,
+                        height: `${selectedPosition.height * scaleY}px`,
                         border: '2px solid #ef4444',
                         cursor: isDragging ? 'grabbing' : 'move',
                         zIndex: 10,
