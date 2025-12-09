@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import { fileURLToPath, URL } from 'node:url'
 import type { Plugin } from 'vite'
 
 // Generate build timestamp
@@ -13,7 +14,7 @@ function serveDocsPlugin(): Plugin {
     configureServer(server) {
       // Serve static files from /docs first, before React Router
       server.middlewares.use('/docs', (req, res, next) => {
-        const url = req.url || ''
+        const url = (req as any).url || ''
         // If it's a request for a file (has extension or is in assets/chunks), serve it directly
         if (url.includes('.') || url.startsWith('/assets') || url.startsWith('/chunks') || url.startsWith('/vp-icons')) {
           // Let Vite serve the static file
@@ -21,7 +22,7 @@ function serveDocsPlugin(): Plugin {
         }
         // If accessing /docs or /docs/ without a file, serve index.html
         if (url === '/' || url === '' || url.endsWith('/')) {
-          req.url = '/index.html'
+          (req as any).url = '/index.html'
         }
         next()
       })
@@ -46,7 +47,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src')
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
   publicDir: 'public'
