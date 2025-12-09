@@ -42,7 +42,7 @@ export default function PDFViewer({
   const [zoom] = useState(1);
   // Use refs instead of state for maximum performance - no re-renders during pinch
   const isPanningRef = useRef(false);
-  const panStartRef = useRef<{ x: number; y: number; scrollTop: number } | null>(null);
+  const panStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
   const isPinchingRef = useRef(false);
   const pinchStartRef = useRef<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
   const currentVisualZoomRef = useRef<number>(1); // Track visual zoom without state updates
@@ -252,6 +252,7 @@ export default function PDFViewer({
     // Native touch start handler - maximum performance
     const handleTouchStartNative = (e: TouchEvent) => {
       if (e.touches.length === 2) {
+        // Two fingers = pinch zoom - prevent default
         e.preventDefault();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
@@ -277,19 +278,37 @@ export default function PDFViewer({
           scrollTop: parentContainer ? parentContainer.scrollTop : 0,
         };
       } else if (e.touches.length === 1 && !isPinchingRef.current) {
+        // Single finger - only start manual pan if zoomed in, otherwise let browser scroll
         const parentContainer = container.parentElement;
-        isPanningRef.current = true;
-        panStartRef.current = {
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
-          scrollTop: parentContainer ? parentContainer.scrollTop : 0,
-        };
+        const currentZoom = currentVisualZoomRef.current;
+        
+        // Only handle manual pan if zoomed in (zoom > 1)
+        // Otherwise, let browser handle native scroll
+        if (currentZoom > 1 && parentContainer) {
+          // Check if we're near the edges or if content is scrollable
+          const isScrollable = parentContainer.scrollHeight > parentContainer.clientHeight || 
+                              parentContainer.scrollWidth > parentContainer.clientWidth;
+          
+          if (isScrollable) {
+            // Start manual pan for better control when zoomed
+            isPanningRef.current = true;
+            panStartRef.current = {
+              x: e.touches[0].clientX,
+              y: e.touches[0].clientY,
+              scrollLeft: parentContainer.scrollLeft,
+              scrollTop: parentContainer.scrollTop,
+            };
+            e.preventDefault(); // Prevent default only when manually panning
+          }
+        }
+        // If zoom <= 1 or not scrollable, let browser handle native scroll
       }
     };
 
     // Native touch move handler - ULTRA-FAST, direct DOM manipulation
     const handleTouchMoveNative = (e: TouchEvent) => {
       if (isPinchingRef.current && pinchStartRef.current && e.touches.length === 2) {
+        // During pinch, prevent default and handle zoom
         e.preventDefault();
         e.stopPropagation();
         const touch1 = e.touches[0];
@@ -305,14 +324,19 @@ export default function PDFViewer({
         container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
         container.style.transformOrigin = 'top center';
       } else if (isPanningRef.current && panStartRef.current && e.touches.length === 1 && !isPinchingRef.current) {
+        // During manual pan (single finger drag), handle scroll manually
         e.preventDefault();
         e.stopPropagation();
+        const deltaX = panStartRef.current.x - e.touches[0].clientX;
         const deltaY = panStartRef.current.y - e.touches[0].clientY;
         const parentContainer = container.parentElement;
         if (parentContainer) {
+          // Handle both horizontal and vertical scroll
+          parentContainer.scrollLeft = panStartRef.current.scrollLeft + deltaX;
           parentContainer.scrollTop = panStartRef.current.scrollTop + deltaY;
         }
       }
+      // If not pinching or panning, let browser handle native scroll
     };
 
     // Native touch end handler
@@ -335,6 +359,7 @@ export default function PDFViewer({
         panStartRef.current = {
           x: e.touches[0].clientX,
           y: e.touches[0].clientY,
+          scrollLeft: parentContainer ? parentContainer.scrollLeft : 0,
           scrollTop: parentContainer ? parentContainer.scrollTop : 0,
         };
       }
