@@ -217,9 +217,55 @@ export default function PDFViewer({
 
   // Removed calculatePinchZoom - no zoom functionality
 
-
   // Removed all touch event handlers - using native scroll only
 
+  // Draw red rectangle for signature position
+  useEffect(() => {
+    if (!selectedPosition || readOnly) return;
+    if (!pdfRef.current || pagesRef.current.length === 0) return;
+    
+    // Find the canvas for the page with the signature position (assuming first page for now)
+    const pageIndex = 0;
+    const pageInfo = pagesRef.current[pageIndex];
+    if (!pageInfo || !pageInfo.canvas || !pageInfo.page) return;
+    
+    const canvas = pageInfo.canvas;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    
+    // Get the PDF coordinates and convert to canvas coordinates
+    const pdfViewport = pageInfo.page.getViewport({ scale: 1 });
+    const scaleFactor = pageInfo.viewport.width / pdfViewport.width;
+    
+    // Convert PDF coordinates to canvas coordinates
+    const canvasX = (selectedPosition.pdfX || selectedPosition.x) * scaleFactor;
+    const canvasY = (selectedPosition.pdfY || selectedPosition.y) * scaleFactor;
+    const canvasWidth = (selectedPosition.pdfWidth || selectedPosition.width) * scaleFactor;
+    const canvasHeight = (selectedPosition.pdfHeight || selectedPosition.height) * scaleFactor;
+    
+    // Account for the render scale (canvas is rendered at higher resolution)
+    const renderScale = canvas.width / pageInfo.viewport.width;
+    const renderX = canvasX * renderScale;
+    const renderY = canvasY * renderScale;
+    const renderWidth = canvasWidth * renderScale;
+    const renderHeight = canvasHeight * renderScale;
+    
+    // Redraw the page to clear previous rectangle
+    const renderViewport = pageInfo.page.getViewport({ scale: pageInfo.viewport.scale * (canvas.width / pageInfo.viewport.width) });
+    const renderContext = {
+      canvasContext: context,
+      viewport: renderViewport,
+    };
+    
+    // Re-render the page
+    pageInfo.page.render(renderContext).promise.then(() => {
+      // Draw red rectangle
+      context.strokeStyle = '#ef4444'; // red-500
+      context.lineWidth = 3 * renderScale;
+      context.setLineDash([]);
+      context.strokeRect(renderX, renderY, renderWidth, renderHeight);
+    });
+  }, [selectedPosition, readOnly, numPages]);
 
   // Convert canvas coordinates to PDF coordinates (for signature positioning)
   const canvasToPdf = (pageNum: number, canvasX: number, canvasY: number, canvasWidth: number, canvasHeight: number) => {
