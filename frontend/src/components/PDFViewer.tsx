@@ -38,7 +38,7 @@ export default function PDFViewer({
   const [numPages, setNumPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Zoom and pan for readOnly mode
+  // Zoom and pan for readOnly mode - start at 1 (fit to width)
   const [zoom, setZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number; scrollTop: number } | null>(null);
@@ -118,19 +118,30 @@ export default function PDFViewer({
       renderTasksRef.current = [];
 
       try {
+        // Get device pixel ratio for high quality rendering
+        const devicePixelRatio = window.devicePixelRatio || 2;
+        const qualityScale = Math.max(2, devicePixelRatio); // Minimum 2x quality
+        
         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
           const page = await pdfRef.current.getPage(pageNum);
           const viewport = page.getViewport({ scale: 1 });
           
-          // Calculate scale to fit container width (100% width)
-          const scale = containerWidth / viewport.width;
-          const scaledViewport = page.getViewport({ scale: scale * zoom });
+          // Calculate base scale to fit container width (100% width)
+          const baseScale = containerWidth / viewport.width;
+          // Apply zoom, but ensure minimum zoom is 1 (fit to width)
+          const effectiveZoom = Math.max(1, zoom);
+          const finalScale = baseScale * effectiveZoom;
           
-          // Create canvas for this page
+          // Render at high quality (qualityScale x finalScale)
+          const renderScale = finalScale * qualityScale;
+          const scaledViewport = page.getViewport({ scale: renderScale });
+          
+          // Create canvas for this page - render at high quality
           const canvas = document.createElement('canvas');
           canvas.width = scaledViewport.width;
           canvas.height = scaledViewport.height;
-          canvas.style.width = '100%';
+          // Display at final size (with zoom applied)
+          canvas.style.width = `${containerWidth * effectiveZoom}px`;
           canvas.style.height = 'auto';
           canvas.style.display = 'block';
           canvas.style.marginBottom = '24px'; // Increased space between pages
@@ -140,11 +151,15 @@ export default function PDFViewer({
           
           const context = canvas.getContext('2d');
           if (!context) continue;
+          
+          // Scale context for high quality rendering
+          context.scale(qualityScale, qualityScale);
 
-          // Render page
+          // Render page at high quality
+          const renderViewport = page.getViewport({ scale: finalScale });
           const renderContext = {
             canvasContext: context,
-            viewport: scaledViewport,
+            viewport: renderViewport,
           };
 
           const renderTask = page.render(renderContext);
@@ -152,16 +167,17 @@ export default function PDFViewer({
           
           await renderTask.promise;
           
-          // Store page info
+          // Store page info (use display viewport, not render viewport)
+          const displayViewport = page.getViewport({ scale: finalScale });
           pagesRef.current[pageNum - 1] = {
             canvas,
-            viewport: scaledViewport,
+            viewport: displayViewport,
             page,
             rendered: true,
           };
           
-          heights.push(scaledViewport.height);
-          totalHeight += scaledViewport.height + 24; // +24 for margin
+          heights.push(displayViewport.height);
+          totalHeight += displayViewport.height + 24; // +24 for margin
           
           // Append canvas to container
           container.appendChild(canvas);
@@ -197,14 +213,15 @@ export default function PDFViewer({
     renderAllPages();
   }, [pdfUrl, numPages, zoom, readOnly, selectedPosition, onViewportReady]);
 
-  // Improved pinch-to-zoom calculation
+  // Improved pinch-to-zoom calculation - zoom out minimum is 1 (fit to width)
   const calculatePinchZoom = useCallback((touch1: React.Touch, touch2: React.Touch, startDistance: number, startZoom: number) => {
     const currentDistance = Math.hypot(
       touch2.clientX - touch1.clientX,
       touch2.clientY - touch1.clientY
     );
     const scale = currentDistance / startDistance;
-    return Math.max(0.5, Math.min(4, startZoom * scale));
+    // Minimum zoom is 1 (fit to container width), maximum is 4
+    return Math.max(1, Math.min(4, startZoom * scale));
   }, []);
 
   // Calculate scroll position to keep pinch center in view
@@ -385,7 +402,7 @@ export default function PDFViewer({
         ref={containerRef}
         className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
-          height: isMobile ? '100vh' : '70vh',
+          height: isMobile ? 'calc(100vh - 80px)' : '70vh', // Subtract header height on mobile
           touchAction: 'pan-y pinch-zoom',
           WebkitOverflowScrolling: 'touch',
         } : {}}
