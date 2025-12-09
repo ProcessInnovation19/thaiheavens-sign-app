@@ -1,8 +1,12 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 
+// Increment version number for each deployment
+const VERSION = '1.2.4'; // Increment this number when making changes
+
 const buildTimestamp = Date.now().toString();
 const buildInfo = {
+  version: VERSION,
   timestamp: buildTimestamp,
   date: new Date().toISOString(),
 };

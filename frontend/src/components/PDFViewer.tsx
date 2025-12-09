@@ -45,9 +45,6 @@ export default function PDFViewer({
   const [isPinching, setIsPinching] = useState(false);
   const [pinchStart, setPinchStart] = useState<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
   const currentVisualZoomRef = useRef<number>(1); // Track visual zoom without state updates
-  const zoomUpdateRef = useRef<number | null>(null);
-  const lastZoomUpdateRef = useRef<number>(0);
-  const zoomThrottleMs = 0; // No throttling - maximum smoothness
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -217,7 +214,9 @@ export default function PDFViewer({
     };
 
     renderAllPages();
-  }, [pdfUrl, numPages, zoom, readOnly, selectedPosition, onViewportReady]);
+  }, [pdfUrl, numPages, readOnly, selectedPosition, onViewportReady]);
+  // NOTE: Removed 'zoom' from dependencies to prevent re-render during pinch
+  // Zoom is now handled purely with CSS transform for smooth experience
 
   // Improved pinch-to-zoom calculation - zoom out minimum is 1 (fit to width)
   const calculatePinchZoom = useCallback((touch1: React.Touch, touch2: React.Touch, startDistance: number, startZoom: number) => {
@@ -260,27 +259,41 @@ export default function PDFViewer({
       
       const container = pagesContainerRef.current;
       if (container) {
-        const rect = container.getBoundingClientRect();
+        const parentContainer = container.parentElement;
+        const rect = parentContainer ? parentContainer.getBoundingClientRect() : container.getBoundingClientRect();
         const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
         const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+        
+        // Get current visual zoom from transform if exists, otherwise use state
+        const container = pagesContainerRef.current;
+        let currentZoom = zoom;
+        if (container && container.style.transform) {
+          // Extract zoom from existing transform
+          const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+          if (transformMatch) {
+            currentZoom = parseFloat(transformMatch[1]);
+          }
+        }
+        currentVisualZoomRef.current = currentZoom;
         
         setIsPinching(true);
         setIsPanning(false);
         setPinchStart({
           distance,
-          zoom,
+          zoom: currentZoom, // Use current visual zoom as base
           center: { x: centerX, y: centerY },
-          scrollTop: container.scrollTop,
+          scrollTop: parentContainer ? parentContainer.scrollTop : 0,
         });
       }
     } else if (e.touches.length === 1 && !isPinching) {
       const container = pagesContainerRef.current;
       if (container) {
+        const parentContainer = container.parentElement;
         setIsPanning(true);
         setPanStart({
           x: e.touches[0].clientX,
           y: e.touches[0].clientY,
-          scrollTop: container.scrollTop,
+          scrollTop: parentContainer ? parentContainer.scrollTop : 0,
         });
       }
     }
@@ -295,7 +308,7 @@ export default function PDFViewer({
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       
-      // Calculate zoom directly for immediate response - NO throttling for maximum smoothness
+      // Calculate zoom directly for immediate response - NO throttling, NO requestAnimationFrame
       // Use pinchStart.zoom as base to avoid accumulation errors
       const baseZoom = pinchStart.zoom;
       const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, baseZoom);
@@ -306,43 +319,41 @@ export default function PDFViewer({
       // Update ref (no state update = no re-render = maximum smoothness)
       currentVisualZoomRef.current = clampedZoom;
       
-      // Apply CSS transform directly to all canvas elements for instant feedback
-      // Use requestAnimationFrame for smooth rendering
-      if (zoomUpdateRef.current !== null) {
-        cancelAnimationFrame(zoomUpdateRef.current);
-      }
-      
-      zoomUpdateRef.current = requestAnimationFrame(() => {
-        const container = pagesContainerRef.current;
-        if (container) {
-          const canvases = container.querySelectorAll('.pdf-page-canvas');
-          const zoomRatio = clampedZoom / pinchStart.zoom; // Ratio from pinch start zoom
-          canvases.forEach((canvas) => {
-            const htmlCanvas = canvas as HTMLCanvasElement;
-            htmlCanvas.style.transform = `scale(${zoomRatio})`;
-            htmlCanvas.style.transformOrigin = 'top center';
-          });
-          
-          // Adjust scroll to keep pinch center in view
-          const rect = container.getBoundingClientRect();
+      // Apply CSS transform to the ENTIRE container for smooth, fluid zoom
+      // This makes everything zoom together (like the post-sign viewer)
+      const container = pagesContainerRef.current;
+      if (container) {
+        // Apply transform directly - scale from base zoom 1
+        // This gives smooth, fluid zoom without re-renders
+        container.style.transform = `scale(${clampedZoom})`;
+        container.style.transformOrigin = 'top center';
+        container.style.willChange = 'transform'; // Optimize for smooth transforms
+        
+        // Adjust scroll to keep pinch center in view
+        const parentContainer = container.parentElement;
+        if (parentContainer) {
+          const rect = parentContainer.getBoundingClientRect();
           const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+          const currentScrollTop = parentContainer.scrollTop;
           const newScrollTop = calculateScrollForZoom(
-            { x: 0, y: centerY + pinchStart.scrollTop },
+            { x: 0, y: centerY + currentScrollTop },
             baseZoom,
             clampedZoom,
-            pinchStart.scrollTop
+            currentScrollTop
           );
-          container.scrollTop = newScrollTop;
+          parentContainer.scrollTop = newScrollTop;
         }
-        zoomUpdateRef.current = null;
-      });
+      }
     } else if (isPanning && panStart && e.touches.length === 1 && !isPinching) {
       e.preventDefault();
       e.stopPropagation();
       const container = pagesContainerRef.current;
       if (container) {
         const deltaY = panStart.y - e.touches[0].clientY;
-        container.scrollTop = panStart.scrollTop + deltaY;
+        const parentContainer = container.parentElement;
+        if (parentContainer) {
+          parentContainer.scrollTop = panStart.scrollTop + deltaY;
+        }
       }
     }
   };
@@ -350,36 +361,21 @@ export default function PDFViewer({
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!readOnly) return;
     
-    // Cancel any pending animation frame
-    if (zoomUpdateRef.current !== null) {
-      cancelAnimationFrame(zoomUpdateRef.current);
-      zoomUpdateRef.current = null;
-    }
-    
-    // When pinch ends, commit visual zoom to actual zoom (triggers re-render with proper scale)
-    if (isPinching && pinchStart) {
-      const finalZoom = currentVisualZoomRef.current;
-      
-      // Remove CSS transforms and update actual zoom state
-      const container = pagesContainerRef.current;
-      if (container) {
-        const canvases = container.querySelectorAll('.pdf-page-canvas');
-        canvases.forEach((canvas) => {
-          const htmlCanvas = canvas as HTMLCanvasElement;
-          htmlCanvas.style.transform = '';
-          htmlCanvas.style.transformOrigin = '';
+      // When pinch ends, keep the transform - don't trigger re-render
+      if (isPinching && pinchStart) {
+        const finalZoom = currentVisualZoomRef.current;
+        
+        // DON'T remove CSS transform - keep it for smooth experience
+        // DON'T update zoom state to avoid re-render
+        // Just update the ref for next pinch calculation
+        currentVisualZoomRef.current = finalZoom;
+        
+        // Update pinchStart.zoom to current zoom to prevent accumulation on next pinch
+        setPinchStart({
+          ...pinchStart,
+          zoom: finalZoom,
         });
       }
-      
-      // Update actual zoom state (this will trigger re-render with proper scale)
-      setZoom(finalZoom);
-      
-      // Update pinchStart.zoom to current zoom to prevent accumulation on next pinch
-      setPinchStart({
-        ...pinchStart,
-        zoom: finalZoom,
-      });
-    }
     
     if (e.touches.length === 0) {
       setIsPanning(false);
@@ -392,11 +388,12 @@ export default function PDFViewer({
       setPinchStart(null);
       const container = pagesContainerRef.current;
       if (container) {
+        const parentContainer = container.parentElement;
         setIsPanning(true);
         setPanStart({
           x: e.touches[0].clientX,
           y: e.touches[0].clientY,
-          scrollTop: container.scrollTop,
+          scrollTop: parentContainer ? parentContainer.scrollTop : 0,
         });
       }
     }
@@ -444,19 +441,13 @@ export default function PDFViewer({
       <div 
         className="w-full h-full relative flex flex-col bg-slate-50" 
         style={{ 
-          height: '100dvh', 
-          width: '100vw', 
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0,
+          height: '100%', 
+          width: '100%', 
           margin: 0,
           padding: 0,
-          zIndex: 200
         }}
       >
-        {/* Pages container - Google PDF Reader style */}
+        {/* Pages container - Google PDF Reader style - can be zoomed with CSS transform */}
         <div
           ref={pagesContainerRef}
           className="flex-1 w-full"
@@ -464,10 +455,8 @@ export default function PDFViewer({
             touchAction: readOnly ? (zoom > 1 ? 'pan-x pan-y pinch-zoom' : 'pan-y pinch-zoom') : 'auto',
             WebkitOverflowScrolling: 'touch',
             height: '100%',
-            maxHeight: '100dvh',
-            overflow: readOnly ? (zoom > 1 ? 'auto' : 'y-auto') : 'auto',
-            overflowX: readOnly ? (zoom > 1 ? 'auto' : 'hidden') : 'auto',
-            overflowY: 'auto',
+            width: '100%',
+            overflow: 'auto',
             margin: 0,
             padding: 0,
           }}

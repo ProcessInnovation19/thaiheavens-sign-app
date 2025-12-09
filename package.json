@@ -9,7 +9,8 @@
     "docs:preview": "cd docs-site && npm run preview",
     "deploy": "powershell -ExecutionPolicy Bypass -File ./deploy.ps1",
     "deploy:message": "powershell -ExecutionPolicy Bypass -File ./deploy.ps1 -Message",
-    "deploy:now": "powershell -ExecutionPolicy Bypass -File ./deploy-now.ps1"
+    "deploy:now": "powershell -ExecutionPolicy Bypass -File ./deploy-now.ps1",
+    "setup:ssh": "powershell -ExecutionPolicy Bypass -File ./setup-ssh-key.ps1"
   },
   "keywords": [
     "pdf",

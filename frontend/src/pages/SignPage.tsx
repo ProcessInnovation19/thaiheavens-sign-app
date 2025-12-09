@@ -91,22 +91,46 @@ export default function SignPage() {
     }
   }, [showSignatureModal]);
 
-  // Request fullscreen when PDF viewer opens on mobile
+  // Request fullscreen when PDF viewer opens on mobile (both pre-sign and post-sign viewers)
   useEffect(() => {
     if (showPdfViewer && typeof window !== 'undefined' && window.innerWidth < 768) {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {
-          // Ignore errors if fullscreen is not available
-        });
-      }
+      // Request fullscreen immediately and also with delay for maximum compatibility
+      const requestFullscreen = () => {
+        const docEl = document.documentElement as any;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen().catch(() => {});
+        } else if (docEl.webkitRequestFullscreen) {
+          // Safari iOS
+          docEl.webkitRequestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+          // Firefox
+          docEl.mozRequestFullScreen();
+        } else if (docEl.msRequestFullscreen) {
+          // IE/Edge
+          docEl.msRequestFullscreen();
+        }
+      };
+      
+      // Only request with delay to ensure modal is rendered first
+      const timer = setTimeout(() => {
+        requestFullscreen();
+      }, 300);
+      
+      return () => {
+        clearTimeout(timer);
+        if (!showPdfViewer && document.fullscreenElement) {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          } else if ((document as any).webkitExitFullscreen) {
+            (document as any).webkitExitFullscreen();
+          } else if ((document as any).mozCancelFullScreen) {
+            (document as any).mozCancelFullScreen();
+          } else if ((document as any).msExitFullscreen) {
+            (document as any).msExitFullscreen();
+          }
+        }
+      };
     }
-    
-    // Exit fullscreen when viewer closes
-    return () => {
-      if (!showPdfViewer && document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
-    };
   }, [showPdfViewer]);
 
   const loadSession = async () => {
@@ -280,9 +304,15 @@ export default function SignPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Secure Session
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  Secure Session
+                </div>
+                {/* Version number for testing deployments */}
+                <div className="text-xs font-mono bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 font-bold">
+                  v{buildInfo.version || buildInfo.timestamp?.slice(-4) || '1.0'}
+                </div>
               </div>
             </div>
           </div>
@@ -359,8 +389,8 @@ export default function SignPage() {
                   
                   {/* Mobile Fullscreen PDF Viewer Modal - Google PDF Reader style */}
                   {typeof window !== 'undefined' && window.innerWidth < 768 && showPdfViewer && (
-                    <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col" style={{ height: '100dvh', width: '100vw' }}>
-                      {/* Close button - top left, minimal */}
+                    <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col" style={{ height: '100dvh', width: '100vw', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                      {/* Close button - FIXED position relative to viewport, stays in place during zoom */}
                       <button
                         onClick={() => {
                           setShowPdfViewer(false);
@@ -369,7 +399,13 @@ export default function SignPage() {
                             document.exitFullscreen().catch(() => {});
                           }
                         }}
-                        className="absolute top-2 left-2 z-50 w-10 h-10 bg-black/70 hover:bg-black/90 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg backdrop-blur-sm"
+                        className="fixed top-2 left-2 z-[250] w-10 h-10 bg-black/70 hover:bg-black/90 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg backdrop-blur-sm"
+                        style={{ 
+                          position: 'fixed',
+                          top: '8px',
+                          left: '8px',
+                          zIndex: 250
+                        }}
                         aria-label="Close"
                       >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -377,8 +413,8 @@ export default function SignPage() {
                         </svg>
                       </button>
                       
-                      {/* Fullscreen PDF Viewer - fills entire screen */}
-                      <div className="flex-1 overflow-hidden relative w-full h-full">
+                      {/* Fullscreen PDF Viewer - fills entire screen, can be zoomed */}
+                      <div className="flex-1 overflow-auto relative w-full h-full" style={{ overflow: 'auto' }}>
                         <PDFViewer 
                           pdfUrl={session.pdfViewUrl} 
                           readOnly={true}
@@ -592,7 +628,7 @@ export default function SignPage() {
                               </svg>
                             </div>
                             <div>
-                              <h3 className="font-bold text-slate-900 text-base">Documento Firmato</h3>
+                              <h3 className="font-bold text-slate-900 text-base">Signed Document</h3>
                               <p className="text-sm text-slate-600">Tap to view signed document</p>
                             </div>
                           </div>
@@ -615,8 +651,8 @@ export default function SignPage() {
                   
                   {/* Mobile Fullscreen PDF Viewer Modal - Google PDF Reader style */}
                   {typeof window !== 'undefined' && window.innerWidth < 768 && showPdfViewer && (
-                    <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col" style={{ height: '100dvh', width: '100vw' }}>
-                      {/* Close button - top left, minimal */}
+                    <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col" style={{ height: '100dvh', width: '100vw', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                      {/* Close button - FIXED position relative to viewport, stays in place during zoom */}
                       <button
                         onClick={() => {
                           setShowPdfViewer(false);
@@ -625,7 +661,13 @@ export default function SignPage() {
                             document.exitFullscreen().catch(() => {});
                           }
                         }}
-                        className="absolute top-2 left-2 z-50 w-10 h-10 bg-black/70 hover:bg-black/90 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg backdrop-blur-sm"
+                        className="fixed top-2 left-2 z-[250] w-10 h-10 bg-black/70 hover:bg-black/90 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg backdrop-blur-sm"
+                        style={{ 
+                          position: 'fixed',
+                          top: '8px',
+                          left: '8px',
+                          zIndex: 250
+                        }}
                         aria-label="Close"
                       >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -633,8 +675,8 @@ export default function SignPage() {
                         </svg>
                       </button>
                       
-                      {/* Fullscreen PDF Viewer - fills entire screen */}
-                      <div className="flex-1 overflow-hidden relative w-full h-full">
+                      {/* Fullscreen PDF Viewer - fills entire screen, can be zoomed */}
+                      <div className="flex-1 overflow-auto relative w-full h-full" style={{ overflow: 'auto' }}>
                         <PDFViewer 
                           pdfUrl={signedPdfUrl} 
                           readOnly={true}
