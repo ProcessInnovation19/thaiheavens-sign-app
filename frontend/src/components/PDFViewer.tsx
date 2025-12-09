@@ -42,10 +42,12 @@ export default function PDFViewer({
   const [zoom] = useState(1);
   // Use refs instead of state for maximum performance - no re-renders during pinch
   const isPanningRef = useRef(false);
-  const panStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const panStartRef = useRef<{ x: number; y: number; translateX: number; translateY: number } | null>(null);
   const isPinchingRef = useRef(false);
-  const pinchStartRef = useRef<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number; scrollLeft: number } | null>(null);
+  const pinchStartRef = useRef<{ distance: number; zoom: number; center: { x: number; y: number }; translateX: number; translateY: number } | null>(null);
   const currentVisualZoomRef = useRef<number>(1); // Track visual zoom without state updates
+  const currentTranslateXRef = useRef<number>(0); // Track translate X
+  const currentTranslateYRef = useRef<number>(0); // Track translate Y
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -258,8 +260,6 @@ export default function PDFViewer({
         const touch2 = e.touches[1];
         const distance = getDistance(touch1, touch2);
         
-        const parentContainer = container.parentElement;
-        
         // Get current zoom from transform
         let currentZoom = currentVisualZoomRef.current;
         const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
@@ -284,22 +284,19 @@ export default function PDFViewer({
           distance,
           zoom: currentZoom,
           center: { x: centerXRelative, y: centerYRelative },
-          scrollTop: parentContainer ? parentContainer.scrollTop : 0,
-          scrollLeft: parentContainer ? parentContainer.scrollLeft : 0,
+          translateX: currentTranslateXRef.current,
+          translateY: currentTranslateYRef.current,
         };
       } else if (e.touches.length === 1) {
         // Single finger: always handle pan manually when readOnly (no native scroll)
         e.preventDefault(); // Always prevent default to handle pan manually
-        const parentContainer = container.parentElement;
-        if (parentContainer) {
-          isPanningRef.current = true;
-          panStartRef.current = {
-            x: e.touches[0].clientX,
-            y: e.touches[0].clientY,
-            scrollLeft: parentContainer.scrollLeft,
-            scrollTop: parentContainer.scrollTop,
-          };
-        }
+        isPanningRef.current = true;
+        panStartRef.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          translateX: currentTranslateXRef.current,
+          translateY: currentTranslateYRef.current,
+        };
       }
     };
 
@@ -317,9 +314,7 @@ export default function PDFViewer({
         const newZoom = calculatePinchZoom(touch1, touch2, pinchStartRef.current.distance, baseZoom);
         const clampedZoom = Math.max(1, Math.min(4, newZoom));
         
-        // Get parent container for scroll adjustment
-        const parentContainer = container.parentElement;
-        if (parentContainer && pinchStartRef.current) {
+        if (pinchStartRef.current) {
           // Calculate current center point (in viewport coordinates)
           const currentCenterX = (touch1.clientX + touch2.clientX) / 2;
           const currentCenterY = (touch1.clientY + touch2.clientY) / 2;
@@ -327,108 +322,111 @@ export default function PDFViewer({
           const currentCenterXRelative = currentCenterX - containerRect.left;
           const currentCenterYRelative = currentCenterY - containerRect.top;
           
-          // Apply zoom with center point as transform origin (this makes the zoom happen from the center)
-          container.style.transformOrigin = `${currentCenterXRelative}px ${currentCenterYRelative}px`;
-          container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
-          
-          // Calculate the point in the content that corresponds to the pinch center
-          // This is the point that should stay under the fingers during zoom
-          const centerXInContent = pinchStartRef.current.center.x;
-          const centerYInContent = pinchStartRef.current.center.y;
-          
           // Calculate zoom change
           const zoomChange = clampedZoom / baseZoom;
           
-          // When zooming, the content grows. To keep the center point under the fingers,
-          // we need to adjust the scroll position.
-          // The formula accounts for how much the content has grown at that point
-          // We need to scroll by the difference: (centerInContent * zoomChange) - centerInContent
-          // Which simplifies to: centerInContent * (zoomChange - 1)
-          const scrollDeltaX = centerXInContent * (zoomChange - 1);
-          const scrollDeltaY = centerYInContent * (zoomChange - 1);
+          // Calculate the point in the content that corresponds to the pinch center
+          const centerXInContent = pinchStartRef.current.center.x;
+          const centerYInContent = pinchStartRef.current.center.y;
           
-          // Adjust scroll to keep the pinch center under the fingers
-          let newScrollLeft = pinchStartRef.current.scrollLeft + scrollDeltaX;
-          let newScrollTop = pinchStartRef.current.scrollTop + scrollDeltaY;
+          // When zooming, to keep the center point under the fingers, we need to adjust translate
+          // Formula: newTranslate = oldTranslate + (centerInContent * (1 - zoomChange))
+          const translateDeltaX = centerXInContent * (1 - zoomChange);
+          const translateDeltaY = centerYInContent * (1 - zoomChange);
           
-          // Clamp scroll to boundaries
-          const viewportWidth = parentContainer.clientWidth;
-          const viewportHeight = parentContainer.clientHeight;
+          // Calculate new translate position
+          let newTranslateX = pinchStartRef.current.translateX + translateDeltaX;
+          let newTranslateY = pinchStartRef.current.translateY + translateDeltaY;
+          
+          // Clamp translate to boundaries (prevent moving content outside viewport)
+          const viewportWidth = containerRect.width;
+          const viewportHeight = containerRect.height;
           const contentWidth = container.scrollWidth;
           const contentHeight = container.scrollHeight;
           const visualContentWidth = contentWidth * clampedZoom;
           const visualContentHeight = contentHeight * clampedZoom;
-          const maxScrollLeft = Math.max(0, (visualContentWidth - viewportWidth) / clampedZoom);
-          const maxScrollTop = Math.max(0, (visualContentHeight - viewportHeight) / clampedZoom);
           
-          newScrollLeft = Math.max(0, Math.min(maxScrollLeft, newScrollLeft));
-          newScrollTop = Math.max(0, Math.min(maxScrollTop, newScrollTop));
+          // Max translate: content edge aligns with viewport edge
+          const maxTranslateX = Math.max(0, visualContentWidth - viewportWidth);
+          const maxTranslateY = Math.max(0, visualContentHeight - viewportHeight);
           
-          parentContainer.scrollLeft = newScrollLeft;
-          parentContainer.scrollTop = newScrollTop;
+          // Min translate: content edge aligns with opposite viewport edge
+          const minTranslateX = Math.min(0, viewportWidth - visualContentWidth);
+          const minTranslateY = Math.min(0, viewportHeight - visualContentHeight);
+          
+          newTranslateX = Math.max(minTranslateX, Math.min(maxTranslateX, newTranslateX));
+          newTranslateY = Math.max(minTranslateY, Math.min(maxTranslateY, newTranslateY));
+          
+          // Apply zoom with center point as transform origin
+          container.style.transformOrigin = `${currentCenterXRelative}px ${currentCenterYRelative}px`;
+          container.style.transform = `translate3d(${newTranslateX}px, ${newTranslateY}px, 0) scale(${clampedZoom})`;
+          
+          // Update refs
+          currentVisualZoomRef.current = clampedZoom;
+          currentTranslateXRef.current = newTranslateX;
+          currentTranslateYRef.current = newTranslateY;
         }
-        
-        // Update ref
-        currentVisualZoomRef.current = clampedZoom;
       } else if (isPanningRef.current && panStartRef.current && e.touches.length === 1 && !isPinchingRef.current) {
-        // During manual pan (single finger drag), handle scroll manually
-        // This allows simultaneous vertical and horizontal movement like Google PDF Viewer
+        // During manual pan (single finger drag), handle translate manually
+        // This allows simultaneous vertical and horizontal movement
         e.preventDefault();
         e.stopPropagation();
         
         const deltaX = panStartRef.current.x - e.touches[0].clientX;
         const deltaY = panStartRef.current.y - e.touches[0].clientY;
-        const parentContainer = container.parentElement;
         
-        if (parentContainer) {
-          // Calculate new scroll positions
-          let newScrollLeft = panStartRef.current.scrollLeft + deltaX;
-          let newScrollTop = panStartRef.current.scrollTop + deltaY;
-          
-          // Get current zoom to calculate limits
-          const currentZoom = currentVisualZoomRef.current;
-          const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
-          const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
-          
-          // Calculate scroll limits based on zoom and container dimensions
-          const viewportWidth = parentContainer.clientWidth;
-          const viewportHeight = parentContainer.clientHeight;
-          
-          // Get actual content dimensions (these don't change with transform: scale())
-          const contentWidth = container.scrollWidth;
-          const contentHeight = container.scrollHeight;
-          
-          // When zoomed, the visual content size is zoom * original size
-          const visualContentWidth = contentWidth * zoom;
-          const visualContentHeight = contentHeight * zoom;
-          
-          // Calculate max scroll based on zoom
-          // When zoom = 1, content fits in viewport, so max scroll is 0
-          // When zoom > 1, we can scroll until the edge of scaled content aligns with viewport edge
-          const maxScrollLeft = Math.max(0, (visualContentWidth - viewportWidth) / zoom);
-          const maxScrollTop = Math.max(0, (visualContentHeight - viewportHeight) / zoom);
-          
-          // Clamp scroll to boundaries (stops at edges like Google PDF Viewer)
-          newScrollLeft = Math.max(0, Math.min(maxScrollLeft, newScrollLeft));
-          newScrollTop = Math.max(0, Math.min(maxScrollTop, newScrollTop));
-          
-          // Apply scroll - smooth and simultaneous in both directions
-          parentContainer.scrollLeft = newScrollLeft;
-          parentContainer.scrollTop = newScrollTop;
-        }
+        // Calculate new translate positions
+        let newTranslateX = panStartRef.current.translateX - deltaX;
+        let newTranslateY = panStartRef.current.translateY - deltaY;
+        
+        // Get current zoom to calculate limits
+        const currentZoom = currentVisualZoomRef.current;
+        const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+        const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
+        
+        // Get container dimensions
+        const containerRect = container.getBoundingClientRect();
+        const viewportWidth = containerRect.width;
+        const viewportHeight = containerRect.height;
+        
+        // Get actual content dimensions
+        const contentWidth = container.scrollWidth;
+        const contentHeight = container.scrollHeight;
+        
+        // When zoomed, the visual content size is zoom * original size
+        const visualContentWidth = contentWidth * zoom;
+        const visualContentHeight = contentHeight * zoom;
+        
+        // Calculate translate limits
+        // Max translate: content edge aligns with viewport edge
+        const maxTranslateX = Math.max(0, visualContentWidth - viewportWidth);
+        const maxTranslateY = Math.max(0, visualContentHeight - viewportHeight);
+        
+        // Min translate: content edge aligns with opposite viewport edge
+        const minTranslateX = Math.min(0, viewportWidth - visualContentWidth);
+        const minTranslateY = Math.min(0, viewportHeight - visualContentHeight);
+        
+        // Clamp translate to boundaries (stops at edges)
+        newTranslateX = Math.max(minTranslateX, Math.min(maxTranslateX, newTranslateX));
+        newTranslateY = Math.max(minTranslateY, Math.min(maxTranslateY, newTranslateY));
+        
+        // Apply translate and zoom together
+        const existingZoom = zoom || 1;
+        container.style.transform = `translate3d(${newTranslateX}px, ${newTranslateY}px, 0) scale(${existingZoom})`;
+        
+        // Update refs
+        currentTranslateXRef.current = newTranslateX;
+        currentTranslateYRef.current = newTranslateY;
       }
     };
 
     // Native touch end handler
     const handleTouchEndNative = (e: TouchEvent) => {
       if (isPinchingRef.current && pinchStartRef.current) {
-        // Update pinch start zoom and scroll for next pinch
-        const parentContainer = container.parentElement;
-        if (parentContainer) {
-          pinchStartRef.current.zoom = currentVisualZoomRef.current;
-          pinchStartRef.current.scrollTop = parentContainer.scrollTop;
-          pinchStartRef.current.scrollLeft = parentContainer.scrollLeft;
-        }
+        // Update pinch start zoom and translate for next pinch
+        pinchStartRef.current.zoom = currentVisualZoomRef.current;
+        pinchStartRef.current.translateX = currentTranslateXRef.current;
+        pinchStartRef.current.translateY = currentTranslateYRef.current;
       }
       
       if (e.touches.length === 0) {
@@ -447,15 +445,14 @@ export default function PDFViewer({
           const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
           const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
           
-          if (zoom > 1) {
-            isPanningRef.current = true;
-            panStartRef.current = {
-              x: e.touches[0].clientX,
-              y: e.touches[0].clientY,
-              scrollLeft: parentContainer.scrollLeft,
-              scrollTop: parentContainer.scrollTop,
-            };
-          }
+          // Always activate pan when switching from pinch to single finger
+        isPanningRef.current = true;
+        panStartRef.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          translateX: currentTranslateXRef.current,
+          translateY: currentTranslateYRef.current,
+        };
         }
       }
     };
@@ -532,16 +529,14 @@ export default function PDFViewer({
             WebkitOverflowScrolling: 'touch',
             height: '100%',
             width: '100%',
-            overflow: 'auto',
-            overflowX: 'auto',
-            overflowY: 'auto',
+            overflow: 'hidden', // No scroll, only pan and pinch
             margin: 0,
             padding: 0,
             willChange: 'transform',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
-            transform: 'translate3d(0, 0, 0)',
-            WebkitTransform: 'translate3d(0, 0, 0)',
+            transform: 'translate3d(0, 0, 0) scale(1)',
+            WebkitTransform: 'translate3d(0, 0, 0) scale(1)',
             contain: 'layout style paint',
           }}
         >
@@ -563,9 +558,7 @@ export default function PDFViewer({
           touchAction: 'none', // Disable native touch actions - handle everything manually
           WebkitOverflowScrolling: 'touch',
           maxHeight: isMobile ? '100dvh' : '70vh',
-          overflow: 'auto',
-          overflowX: 'auto', // Always allow horizontal scroll
-          overflowY: 'auto',
+          overflow: 'hidden', // No scroll, only pan and pinch
         } : {}}
       >
         <div
@@ -574,14 +567,12 @@ export default function PDFViewer({
           style={readOnly ? {
             touchAction: 'none', // Disable native touch actions - handle everything manually
             WebkitOverflowScrolling: 'touch',
-            overflow: 'auto',
-            overflowX: 'auto', // Always allow horizontal scroll
-            overflowY: 'auto',
+            overflow: 'hidden', // No scroll, only pan and pinch
             willChange: 'transform',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
-            transform: 'translate3d(0, 0, 0)',
-            WebkitTransform: 'translate3d(0, 0, 0)',
+            transform: 'translate3d(0, 0, 0) scale(1)',
+            WebkitTransform: 'translate3d(0, 0, 0) scale(1)',
             contain: 'layout style paint',
           } : {}}
         >
