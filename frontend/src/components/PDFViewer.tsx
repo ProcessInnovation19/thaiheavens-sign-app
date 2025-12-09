@@ -288,26 +288,18 @@ export default function PDFViewer({
           scrollLeft: parentContainer ? parentContainer.scrollLeft : 0,
         };
       } else if (e.touches.length === 1) {
-        // Single finger: check if zoomed, if so handle pan manually (like Google PDF Viewer)
-        const currentZoom = currentVisualZoomRef.current;
-        const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
-        const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
-        
-        // Always prevent default when zoomed to handle pan manually (allows simultaneous movement)
-        if (zoom > 1) {
-          e.preventDefault(); // Prevent default to handle pan manually
-          const parentContainer = container.parentElement;
-          if (parentContainer) {
-            isPanningRef.current = true;
-            panStartRef.current = {
-              x: e.touches[0].clientX,
-              y: e.touches[0].clientY,
-              scrollLeft: parentContainer.scrollLeft,
-              scrollTop: parentContainer.scrollTop,
-            };
-          }
+        // Single finger: always handle pan manually when readOnly (no native scroll)
+        e.preventDefault(); // Always prevent default to handle pan manually
+        const parentContainer = container.parentElement;
+        if (parentContainer) {
+          isPanningRef.current = true;
+          panStartRef.current = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY,
+            scrollLeft: parentContainer.scrollLeft,
+            scrollTop: parentContainer.scrollTop,
+          };
         }
-        // If not zoomed, let browser handle native scroll (don't prevent default)
       }
     };
 
@@ -335,6 +327,10 @@ export default function PDFViewer({
           const currentCenterXRelative = currentCenterX - containerRect.left;
           const currentCenterYRelative = currentCenterY - containerRect.top;
           
+          // Apply zoom with center point as transform origin (this makes the zoom happen from the center)
+          container.style.transformOrigin = `${currentCenterXRelative}px ${currentCenterYRelative}px`;
+          container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
+          
           // Calculate the point in the content that corresponds to the pinch center
           // This is the point that should stay under the fingers during zoom
           const centerXInContent = pinchStartRef.current.center.x;
@@ -345,24 +341,37 @@ export default function PDFViewer({
           
           // When zooming, the content grows. To keep the center point under the fingers,
           // we need to adjust the scroll position.
-          // The formula: newScroll = oldScroll + (centerInContent * (zoomChange - 1))
-          // This accounts for how much the content has grown at that point
+          // The formula accounts for how much the content has grown at that point
+          // We need to scroll by the difference: (centerInContent * zoomChange) - centerInContent
+          // Which simplifies to: centerInContent * (zoomChange - 1)
           const scrollDeltaX = centerXInContent * (zoomChange - 1);
           const scrollDeltaY = centerYInContent * (zoomChange - 1);
           
-          // Apply zoom with center point as transform origin (this makes the zoom happen from the center)
-          container.style.transformOrigin = `${currentCenterXRelative}px ${currentCenterYRelative}px`;
-          container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
-          
           // Adjust scroll to keep the pinch center under the fingers
-          parentContainer.scrollLeft = pinchStartRef.current.scrollLeft + scrollDeltaX;
-          parentContainer.scrollTop = pinchStartRef.current.scrollTop + scrollDeltaY;
+          let newScrollLeft = pinchStartRef.current.scrollLeft + scrollDeltaX;
+          let newScrollTop = pinchStartRef.current.scrollTop + scrollDeltaY;
+          
+          // Clamp scroll to boundaries
+          const viewportWidth = parentContainer.clientWidth;
+          const viewportHeight = parentContainer.clientHeight;
+          const contentWidth = container.scrollWidth;
+          const contentHeight = container.scrollHeight;
+          const visualContentWidth = contentWidth * clampedZoom;
+          const visualContentHeight = contentHeight * clampedZoom;
+          const maxScrollLeft = Math.max(0, (visualContentWidth - viewportWidth) / clampedZoom);
+          const maxScrollTop = Math.max(0, (visualContentHeight - viewportHeight) / clampedZoom);
+          
+          newScrollLeft = Math.max(0, Math.min(maxScrollLeft, newScrollLeft));
+          newScrollTop = Math.max(0, Math.min(maxScrollTop, newScrollTop));
+          
+          parentContainer.scrollLeft = newScrollLeft;
+          parentContainer.scrollTop = newScrollTop;
         }
         
         // Update ref
         currentVisualZoomRef.current = clampedZoom;
       } else if (isPanningRef.current && panStartRef.current && e.touches.length === 1 && !isPinchingRef.current) {
-        // During manual pan (single finger drag when zoomed), handle scroll manually
+        // During manual pan (single finger drag), handle scroll manually
         // This allows simultaneous vertical and horizontal movement like Google PDF Viewer
         e.preventDefault();
         e.stopPropagation();
@@ -382,7 +391,6 @@ export default function PDFViewer({
           const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
           
           // Calculate scroll limits based on zoom and container dimensions
-          // With transformOrigin: 'top left', content expands only right and down (no left expansion)
           const viewportWidth = parentContainer.clientWidth;
           const viewportHeight = parentContainer.clientHeight;
           
@@ -394,14 +402,13 @@ export default function PDFViewer({
           const visualContentWidth = contentWidth * zoom;
           const visualContentHeight = contentHeight * zoom;
           
-          // With transformOrigin: 'top left', content expands only to the right and down
-          // So we can scroll right until the right edge of scaled content aligns with viewport right
-          // And scroll down until the bottom edge of scaled content aligns with viewport bottom
+          // Calculate max scroll based on zoom
+          // When zoom = 1, content fits in viewport, so max scroll is 0
+          // When zoom > 1, we can scroll until the edge of scaled content aligns with viewport edge
           const maxScrollLeft = Math.max(0, (visualContentWidth - viewportWidth) / zoom);
           const maxScrollTop = Math.max(0, (visualContentHeight - viewportHeight) / zoom);
           
           // Clamp scroll to boundaries (stops at edges like Google PDF Viewer)
-          // Min is 0 (can't scroll left), max is calculated based on scaled content
           newScrollLeft = Math.max(0, Math.min(maxScrollLeft, newScrollLeft));
           newScrollTop = Math.max(0, Math.min(maxScrollTop, newScrollTop));
           
@@ -410,7 +417,6 @@ export default function PDFViewer({
           parentContainer.scrollTop = newScrollTop;
         }
       }
-      // If not pinching or panning, let browser handle native scroll
     };
 
     // Native touch end handler
@@ -522,7 +528,7 @@ export default function PDFViewer({
           ref={pagesContainerRef}
           className="flex-1 w-full"
           style={{
-            touchAction: readOnly ? 'pan-x pan-y pinch-zoom' : 'auto', // Allow native scroll when not zoomed, manual when zoomed
+            touchAction: readOnly ? 'none' : 'auto', // Disable native touch actions - handle everything manually
             WebkitOverflowScrolling: 'touch',
             height: '100%',
             width: '100%',
@@ -554,7 +560,7 @@ export default function PDFViewer({
         className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
           height: isMobile ? '100dvh' : '70vh', // Full height on mobile when header is hidden
-          touchAction: 'pan-x pan-y pinch-zoom', // Allow native scroll when not zoomed, manual when zoomed
+          touchAction: 'none', // Disable native touch actions - handle everything manually
           WebkitOverflowScrolling: 'touch',
           maxHeight: isMobile ? '100dvh' : '70vh',
           overflow: 'auto',
@@ -566,7 +572,7 @@ export default function PDFViewer({
           ref={pagesContainerRef}
           className="w-full"
           style={readOnly ? {
-            touchAction: 'pan-x pan-y pinch-zoom', // Allow native scroll when not zoomed, manual when zoomed
+            touchAction: 'none', // Disable native touch actions - handle everything manually
             WebkitOverflowScrolling: 'touch',
             overflow: 'auto',
             overflowX: 'auto', // Always allow horizontal scroll
