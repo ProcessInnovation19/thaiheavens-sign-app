@@ -393,11 +393,13 @@ export default function PDFViewer({
           ref={pagesContainerRef}
           className="flex-1 w-full"
           style={{
-            touchAction: readOnly ? (zoom > 1 ? 'pan-x pan-y pinch-zoom' : 'pan-y pinch-zoom') : 'auto',
+            touchAction: readOnly ? 'pan-x pan-y pinch-zoom' : 'auto',
             WebkitOverflowScrolling: 'touch',
             height: '100%',
             width: '100%',
             overflow: 'auto',
+            overflowX: 'auto',
+            overflowY: 'auto',
             margin: 0,
             padding: 0,
             willChange: 'transform',
@@ -423,11 +425,11 @@ export default function PDFViewer({
         className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
           height: isMobile ? '100dvh' : '70vh', // Full height on mobile when header is hidden
-          touchAction: zoom > 1 ? 'pan-x pan-y pinch-zoom' : 'pan-y pinch-zoom',
+          touchAction: 'pan-x pan-y pinch-zoom', // Always allow horizontal and vertical pan
           WebkitOverflowScrolling: 'touch',
           maxHeight: isMobile ? '100dvh' : '70vh',
-          overflow: zoom > 1 ? 'auto' : 'y-auto',
-          overflowX: zoom > 1 ? 'auto' : 'hidden',
+          overflow: 'auto',
+          overflowX: 'auto', // Always allow horizontal scroll
           overflowY: 'auto',
         } : {}}
       >
@@ -435,10 +437,10 @@ export default function PDFViewer({
           ref={pagesContainerRef}
           className="w-full"
           style={readOnly ? {
-            touchAction: zoom > 1 ? 'pan-x pan-y pinch-zoom' : 'pan-y pinch-zoom',
+            touchAction: 'pan-x pan-y pinch-zoom', // Always allow horizontal and vertical pan
             WebkitOverflowScrolling: 'touch',
-            overflow: zoom > 1 ? 'auto' : 'y-auto',
-            overflowX: zoom > 1 ? 'auto' : 'hidden',
+            overflow: 'auto',
+            overflowX: 'auto', // Always allow horizontal scroll
             overflowY: 'auto',
             willChange: 'transform',
             backfaceVisibility: 'hidden',
