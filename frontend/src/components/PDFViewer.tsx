@@ -139,7 +139,9 @@ export default function PDFViewer({
           canvas.style.width = '100%';
           canvas.style.height = 'auto';
           canvas.style.display = 'block';
-          canvas.style.marginBottom = '8px'; // Small space between pages
+          canvas.style.marginBottom = '24px'; // Increased space between pages
+          canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'; // Elevated shadow effect
+          canvas.style.backgroundColor = '#ffffff';
           canvas.className = 'pdf-page-canvas';
           
           const context = canvas.getContext('2d');
@@ -165,7 +167,7 @@ export default function PDFViewer({
           };
           
           heights.push(scaledViewport.height);
-          totalHeight += scaledViewport.height + 8; // +8 for margin
+          totalHeight += scaledViewport.height + 24; // +24 for margin
           
           // Append canvas to container
           container.appendChild(canvas);
@@ -358,60 +360,10 @@ export default function PDFViewer({
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  // Fullscreen mobile mode (Adobe Reader Light style)
+  // Fullscreen mobile mode (Google PDF Reader style)
   if (fullscreen && isMobile) {
     return (
-      <div className="w-full h-full relative flex flex-col bg-black" style={{ height: '100%', width: '100%' }}>
-        {/* Minimal floating controls */}
-        <div className="absolute top-2 right-2 z-50 flex flex-col gap-2">
-          <div className="bg-black/70 backdrop-blur-sm rounded-lg px-3 py-1.5 text-white text-xs font-semibold shadow-lg">
-            {currentPage} / {numPages}
-          </div>
-          {readOnly && (
-            <div className="bg-black/70 backdrop-blur-sm rounded-lg p-1 flex flex-col gap-1 shadow-lg">
-              <button
-                onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
-                className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded text-sm font-bold flex items-center justify-center transition-colors"
-                aria-label="Zoom in"
-              >
-                +
-              </button>
-              <div className="px-2 py-1 text-white text-xs font-semibold text-center min-w-[40px]">
-                {Math.round(zoom * 100)}%
-              </div>
-              <button
-                onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
-                className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white rounded text-sm font-bold flex items-center justify-center transition-colors"
-                aria-label="Zoom out"
-              >
-                −
-              </button>
-            </div>
-          )}
-        </div>
-        
-        {/* Page navigation */}
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-3 shadow-lg">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1 || loading}
-              className="w-8 h-8 bg-white/20 hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-full font-bold text-sm flex items-center justify-center transition-colors"
-              aria-label="Previous page"
-            >
-              ←
-            </button>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
-              disabled={currentPage === numPages || loading}
-              className="w-8 h-8 bg-white/20 hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-full font-bold text-sm flex items-center justify-center transition-colors"
-              aria-label="Next page"
-            >
-              →
-            </button>
-          </div>
-        </div>
-        
+      <div className="w-full h-full relative flex flex-col bg-slate-50" style={{ height: '100vh', width: '100%', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
         {/* Pages container - Google PDF Reader style */}
         <div
           ref={pagesContainerRef}
@@ -419,6 +371,7 @@ export default function PDFViewer({
           style={{
             touchAction: readOnly ? 'pan-y pinch-zoom' : 'auto',
             WebkitOverflowScrolling: 'touch',
+            height: '100%',
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -433,69 +386,10 @@ export default function PDFViewer({
   // Desktop/normal mode
   return (
     <div className="w-full relative">
-      {/* Desktop: Controls above PDF */}
-      {!isMobile && (
-        <>
-          <div className="flex items-center justify-center gap-2 mb-3 bg-slate-50 rounded-lg p-2 border border-slate-200">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1 || loading}
-              className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
-            >
-              ← Previous
-            </button>
-            <div className="px-6 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-900 shadow-sm">
-              Page {currentPage} of {numPages}
-            </div>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
-              disabled={currentPage === numPages || loading}
-              className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
-            >
-              Next →
-            </button>
-          </div>
-          
-          {/* Zoom Controls */}
-          {readOnly && (
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <button
-                onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
-                className="px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
-                aria-label="Zoom out"
-              >
-                −
-              </button>
-              <span className="px-4 py-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-700 shadow-sm min-w-[80px] text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <button
-                onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
-                className="px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
-                aria-label="Zoom in"
-              >
-                +
-              </button>
-              <button
-                onClick={() => {
-                  setZoom(1);
-                  if (pagesContainerRef.current) {
-                    pagesContainerRef.current.scrollTop = 0;
-                  }
-                }}
-                className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
-              >
-                Reset
-              </button>
-            </div>
-          )}
-        </>
-      )}
-      
       {/* Pages container - Google PDF Reader style: all pages vertical */}
       <div
         ref={containerRef}
-        className={`flex flex-col items-center ${readOnly ? 'bg-slate-100 rounded-lg border border-slate-200 overflow-y-auto' : 'p-1 sm:p-2'}`}
+        className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
           height: isMobile ? '100vh' : '70vh',
           touchAction: 'pan-y pinch-zoom',
