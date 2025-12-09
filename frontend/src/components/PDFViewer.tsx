@@ -40,13 +40,14 @@ export default function PDFViewer({
   const [error, setError] = useState<string | null>(null);
   // Zoom and pan for readOnly mode - start at 1 (fit to width)
   const [zoom, setZoom] = useState(1);
+  const [visualZoom, setVisualZoom] = useState(1); // Visual zoom for smooth CSS transform during pinch
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number; scrollTop: number } | null>(null);
   const [isPinching, setIsPinching] = useState(false);
   const [pinchStart, setPinchStart] = useState<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
   const zoomUpdateRef = useRef<number | null>(null);
   const lastZoomUpdateRef = useRef<number>(0);
-  const zoomThrottleMs = 16; // ~60fps
+  const zoomThrottleMs = 8; // ~120fps for smoother zoom
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -156,6 +157,7 @@ export default function PDFViewer({
           // Optimize for smooth zooming
           canvas.style.willChange = 'transform';
           canvas.style.imageRendering = 'high-quality';
+          canvas.style.transition = 'none'; // Disable transitions during pinch for instant response
           
           const context = canvas.getContext('2d');
           if (!context) continue;
@@ -293,7 +295,7 @@ export default function PDFViewer({
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       
-      // Throttle zoom updates for smooth performance (~60fps)
+      // Throttle zoom updates for smooth performance (~120fps)
       const now = Date.now();
       if (now - lastZoomUpdateRef.current < zoomThrottleMs) {
         return;
@@ -308,12 +310,21 @@ export default function PDFViewer({
       // Clamp zoom between 1 (fit to width) and 4 (max zoom)
       const clampedZoom = Math.max(1, Math.min(4, newZoom));
       
-      // Update zoom state for smooth visual feedback
-      setZoom(clampedZoom);
+      // Update visual zoom immediately with CSS transform (no re-render)
+      setVisualZoom(clampedZoom);
       
-      // Adjust scroll to keep pinch center in view
+      // Apply CSS transform directly to all canvas elements for instant feedback
       const container = pagesContainerRef.current;
       if (container) {
+        const canvases = container.querySelectorAll('.pdf-page-canvas');
+        const zoomRatio = clampedZoom / pinchStart.zoom; // Ratio from pinch start zoom
+        canvases.forEach((canvas) => {
+          const htmlCanvas = canvas as HTMLCanvasElement;
+          htmlCanvas.style.transform = `scale(${zoomRatio})`;
+          htmlCanvas.style.transformOrigin = 'top center';
+        });
+        
+        // Adjust scroll to keep pinch center in view
         const rect = container.getBoundingClientRect();
         const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
         const newScrollTop = calculateScrollForZoom(
@@ -338,11 +349,26 @@ export default function PDFViewer({
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!readOnly) return;
     
-    // Update pinchStart.zoom to current zoom to prevent accumulation on next pinch
+    // When pinch ends, commit visual zoom to actual zoom (triggers re-render with proper scale)
     if (isPinching && pinchStart) {
+      // Remove CSS transforms and update actual zoom state
+      const container = pagesContainerRef.current;
+      if (container) {
+        const canvases = container.querySelectorAll('.pdf-page-canvas');
+        canvases.forEach((canvas) => {
+          const htmlCanvas = canvas as HTMLCanvasElement;
+          htmlCanvas.style.transform = '';
+          htmlCanvas.style.transformOrigin = '';
+        });
+      }
+      
+      // Update actual zoom state (this will trigger re-render with proper scale)
+      setZoom(visualZoom);
+      
+      // Update pinchStart.zoom to current zoom to prevent accumulation on next pinch
       setPinchStart({
         ...pinchStart,
-        zoom: zoom, // Update to current zoom value
+        zoom: visualZoom,
       });
     }
     
