@@ -28,7 +28,6 @@ export default function PDFViewer({
   selectedPosition,
   readOnly = false,
   onViewportReady,
-  onPositionUpdate,
   fullscreen = false,
 }: PDFViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
