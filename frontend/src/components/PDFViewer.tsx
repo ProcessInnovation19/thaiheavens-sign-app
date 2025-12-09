@@ -229,7 +229,9 @@ export default function PDFViewer({
                 const pdfWidth = defaultWidth * pdfScaleRatio;
                 const pdfHeight = defaultHeight * pdfScaleRatio;
                 const pdfBoxX = (canvasX * pdfScaleRatio) - pdfWidth / 2;
-                const pdfBoxY = (canvasY * pdfScaleRatio) - pdfHeight / 2;
+                // PDF coordinates have bottom-left origin, so flip Y
+                // canvasY is from top, convert to bottom-left origin
+                const pdfBoxY = ((pageInfo.viewport.height - canvasY) * pdfScaleRatio) - pdfHeight / 2;
                 
                 onPositionUpdate({
                   x: boxX,
@@ -324,7 +326,8 @@ export default function PDFViewer({
         const pageInfo = pagesRef.current[currentPage - 1];
         const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
         const pdfX = newX * pdfScaleRatio;
-        const pdfY = (pageInfo.viewport.height - newY - selectedPosition.height) * pdfScaleRatio;
+        // PDF coordinates have bottom-left origin, so flip Y
+        const pdfY = ((pageInfo.viewport.height - newY - selectedPosition.height) * pdfScaleRatio);
         
         onPositionUpdate({
           x: newX,
