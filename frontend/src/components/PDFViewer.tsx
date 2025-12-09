@@ -285,7 +285,10 @@ export default function PDFViewer({
       const touch2 = e.touches[1];
       
       const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, pinchStart.zoom);
-      setZoom(newZoom);
+      
+      // Clamp zoom between 1 (fit to width) and 4 (max zoom) and update immediately
+      const clampedZoom = Math.max(1, Math.min(4, newZoom));
+      setZoom(clampedZoom);
       
       // Adjust scroll to keep pinch center in view
       const container = pagesContainerRef.current;
@@ -295,7 +298,7 @@ export default function PDFViewer({
         const newScrollTop = calculateScrollForZoom(
           { x: 0, y: centerY + pinchStart.scrollTop },
           pinchStart.zoom,
-          newZoom,
+          clampedZoom,
           pinchStart.scrollTop
         );
         container.scrollTop = newScrollTop;

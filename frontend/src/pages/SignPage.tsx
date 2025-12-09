@@ -377,7 +377,7 @@ export default function SignPage() {
 
         {/* Step: Sign - Directly show modal */}
         {step === 'sign' && showSignatureModal && (
-          <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+          <div className="fixed inset-0 z-[100] bg-white flex flex-col" style={{ height: '100dvh', width: '100vw' }}>
                 {/* Mobile Portrait: Show rotate message */}
                 {!isLandscape && typeof window !== 'undefined' && window.innerWidth < 768 && (
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex flex-col items-center justify-center z-[110] p-8 text-center">
