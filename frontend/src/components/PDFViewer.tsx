@@ -322,21 +322,24 @@ export default function PDFViewer({
           
           // Calculate scroll limits based on zoom and container dimensions
           // When using transform: scale(), the content is visually zoomed but container dimensions stay the same
-          // The scrollable area is the difference between scaled content and viewport
-          const containerWidth = parentContainer.clientWidth;
-          const containerHeight = parentContainer.clientHeight;
+          const viewportWidth = parentContainer.clientWidth;
+          const viewportHeight = parentContainer.clientHeight;
+          
+          // Get actual content dimensions (these don't change with transform: scale())
           const contentWidth = container.scrollWidth;
           const contentHeight = container.scrollHeight;
           
-          // When zoomed, the scaled content extends beyond the viewport
-          // Scroll limits = (scaled content size) - (viewport size)
-          const scaledContentWidth = contentWidth * zoom;
-          const scaledContentHeight = contentHeight * zoom;
+          // When zoomed, the visual content size is zoom * original size
+          // The scrollable distance in original coordinates is: (visual content - viewport) / zoom
+          // This is because scrollLeft/Top are in original coordinates, not scaled
+          const visualContentWidth = contentWidth * zoom;
+          const visualContentHeight = contentHeight * zoom;
           
-          // Calculate max scroll (stops at edges like Google PDF Viewer)
-          // The content is zoom times larger, so we can scroll (zoom - 1) * contentSize
-          const maxScrollLeft = Math.max(0, (scaledContentWidth - containerWidth) / zoom);
-          const maxScrollTop = Math.max(0, (scaledContentHeight - containerHeight) / zoom);
+          // Calculate max scroll in original coordinates
+          // We can scroll until the scaled content edge aligns with viewport edge
+          // Formula: (visualContentSize - viewportSize) / zoom
+          const maxScrollLeft = Math.max(0, (visualContentWidth - viewportWidth) / zoom);
+          const maxScrollTop = Math.max(0, (visualContentHeight - viewportHeight) / zoom);
           
           // Clamp scroll to boundaries (stops at edges like Google PDF Viewer)
           newScrollLeft = Math.max(0, Math.min(maxScrollLeft, newScrollLeft));
