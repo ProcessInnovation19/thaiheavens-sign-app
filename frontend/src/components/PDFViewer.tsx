@@ -39,7 +39,6 @@ export default function PDFViewer({
   const [numPages, setNumPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   // Zoom and pan for readOnly mode
   const [zoom, setZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
@@ -47,11 +46,7 @@ export default function PDFViewer({
   const [isPinching, setIsPinching] = useState(false);
   const [pinchStart, setPinchStart] = useState<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
 
-  useEffect(() => {
-    if (selectedPage) {
-      setCurrentPage(selectedPage);
-    }
-  }, [selectedPage]);
+  // Note: selectedPage is used for signature positioning, not for navigation
 
   // Load PDF
   useEffect(() => {
