@@ -277,13 +277,18 @@ export default function PDFViewer({
         const centerXRelative = centerX - containerRect.left;
         const centerYRelative = centerY - containerRect.top;
         
+        // Calculate the point in the content (accounting for current translate and zoom)
+        // This is the point that should stay under the fingers during zoom
+        const centerXInContent = (centerXRelative - currentTranslateXRef.current) / currentZoom;
+        const centerYInContent = (centerYRelative - currentTranslateYRef.current) / currentZoom;
+        
         // Store pinch start in ref (no state = no re-render)
         isPinchingRef.current = true;
         isPanningRef.current = false;
         pinchStartRef.current = {
           distance,
           zoom: currentZoom,
-          center: { x: centerXRelative, y: centerYRelative },
+          center: { x: centerXInContent, y: centerYInContent }, // Store in content coordinates
           translateX: currentTranslateXRef.current,
           translateY: currentTranslateYRef.current,
         };
