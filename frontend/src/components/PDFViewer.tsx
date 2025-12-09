@@ -309,7 +309,7 @@ export default function PDFViewer({
           const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
           const newScrollTop = calculateScrollForZoom(
             { x: 0, y: centerY + pinchStart.scrollTop },
-            currentZoom,
+            baseZoom,
             clampedZoom,
             pinchStart.scrollTop
           );
