@@ -229,9 +229,8 @@ export default function PDFViewer({
                 const pdfWidth = defaultWidth * pdfScaleRatio;
                 const pdfHeight = defaultHeight * pdfScaleRatio;
                 const pdfBoxX = (canvasX * pdfScaleRatio) - pdfWidth / 2;
-                // PDF coordinates have bottom-left origin, so flip Y
-                // canvasY is from top, convert to bottom-left origin
-                const pdfBoxY = ((pageInfo.viewport.height - canvasY) * pdfScaleRatio) - pdfHeight / 2;
+                // PDF coordinates - use canvasY directly (like AdminPage does)
+                const pdfBoxY = (canvasY * pdfScaleRatio) - pdfHeight / 2;
                 
                 onPositionUpdate({
                   x: boxX,
