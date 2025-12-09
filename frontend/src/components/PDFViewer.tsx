@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -40,10 +40,11 @@ export default function PDFViewer({
   const [error, setError] = useState<string | null>(null);
   // Zoom and pan for readOnly mode - start at 1 (fit to width)
   const [zoom] = useState(1);
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState<{ x: number; y: number; scrollTop: number } | null>(null);
-  const [isPinching, setIsPinching] = useState(false);
-  const [pinchStart, setPinchStart] = useState<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
+  // Use refs instead of state for maximum performance - no re-renders during pinch
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef<{ x: number; y: number; scrollTop: number } | null>(null);
+  const isPinchingRef = useRef(false);
+  const pinchStartRef = useRef<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
   const currentVisualZoomRef = useRef<number>(1); // Track visual zoom without state updates
 
   // Note: selectedPage is used for signature positioning, not for navigation
@@ -218,157 +219,141 @@ export default function PDFViewer({
   // NOTE: Removed 'zoom' from dependencies to prevent re-render during pinch
   // Zoom is now handled purely with CSS transform for smooth experience
 
-  // Improved pinch-to-zoom calculation - zoom out minimum is 1 (fit to width)
-  const calculatePinchZoom = useCallback((touch1: React.Touch, touch2: React.Touch, startDistance: number, startZoom: number) => {
-    const currentDistance = Math.hypot(
-      touch2.clientX - touch1.clientX,
-      touch2.clientY - touch1.clientY
-    );
+  // Ultra-fast pinch-to-zoom calculation - optimized for performance
+  // Use simple distance calculation instead of Math.hypot for speed
+  const calculatePinchZoom = (touch1: Touch, touch2: Touch, startDistance: number, startZoom: number) => {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    // Fast distance calculation (avoid Math.hypot for performance)
+    const currentDistance = Math.sqrt(dx * dx + dy * dy);
     // Calculate scale based on distance change
     const scale = currentDistance / startDistance;
     // Apply scale to current zoom
     const newZoom = startZoom * scale;
     // Minimum zoom is 1 (fit to container width), maximum is 4
     return Math.max(1, Math.min(4, newZoom));
-  }, []);
+  };
 
 
-  // Touch handlers for improved pinch-to-zoom
-  const handleTouchStart = (e: React.TouchEvent) => {
+  // Native touch event listeners for maximum performance - NO React event system overhead
+  useEffect(() => {
     if (!readOnly) return;
     
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(
-        touch2.clientX - touch1.clientX,
-        touch2.clientY - touch1.clientY
-      );
-      
-      const container = pagesContainerRef.current;
-      if (container) {
-        const parentContainer = container.parentElement;
-        const rect = parentContainer ? parentContainer.getBoundingClientRect() : container.getBoundingClientRect();
-        const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
-        const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+    const container = pagesContainerRef.current;
+    if (!container) return;
+
+    // Ultra-fast distance calculation (avoid Math.hypot)
+    const getDistance = (t1: Touch, t2: Touch) => {
+      const dx = t2.clientX - t1.clientX;
+      const dy = t2.clientY - t1.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    // Native touch start handler - maximum performance
+    const handleTouchStartNative = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const distance = getDistance(touch1, touch2);
         
-        // Get current visual zoom from transform if exists, otherwise use state
-        let currentZoom = zoom;
-        if (container && container.style.transform) {
-          // Extract zoom from existing transform
-          const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
-          if (transformMatch) {
-            currentZoom = parseFloat(transformMatch[1]);
-          }
+        const parentContainer = container.parentElement;
+        
+        // Get current zoom from transform
+        let currentZoom = currentVisualZoomRef.current;
+        const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+        if (transformMatch) {
+          currentZoom = parseFloat(transformMatch[1]);
         }
         currentVisualZoomRef.current = currentZoom;
         
-        setIsPinching(true);
-        setIsPanning(false);
-        setPinchStart({
+        // Store pinch start in ref (no state = no re-render)
+        isPinchingRef.current = true;
+        isPanningRef.current = false;
+        pinchStartRef.current = {
           distance,
-          zoom: currentZoom, // Use current visual zoom as base
-          center: { x: centerX, y: centerY },
+          zoom: currentZoom,
+          center: { x: 0, y: 0 }, // Not used, but kept for compatibility
           scrollTop: parentContainer ? parentContainer.scrollTop : 0,
-        });
-      }
-    } else if (e.touches.length === 1 && !isPinching) {
-      const container = pagesContainerRef.current;
-      if (container) {
+        };
+      } else if (e.touches.length === 1 && !isPinchingRef.current) {
         const parentContainer = container.parentElement;
-        setIsPanning(true);
-        setPanStart({
+        isPanningRef.current = true;
+        panStartRef.current = {
           x: e.touches[0].clientX,
           y: e.touches[0].clientY,
           scrollTop: parentContainer ? parentContainer.scrollTop : 0,
-        });
+        };
       }
-    }
-  };
+    };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!readOnly) return;
-    
-    if (isPinching && pinchStart && e.touches.length === 2) {
-      e.preventDefault();
-      e.stopPropagation();
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      
-      // Calculate zoom directly - NO delays, NO RAF, immediate application
-      const baseZoom = pinchStart.zoom;
-      const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, baseZoom);
-      
-      // Clamp zoom between 1 (fit to width) and 4 (max zoom)
-      const clampedZoom = Math.max(1, Math.min(4, newZoom));
-      
-      // Update ref immediately
-      currentVisualZoomRef.current = clampedZoom;
-      
-      // Apply transform DIRECTLY without requestAnimationFrame for maximum responsiveness
-      // This gives native-like, instant zoom response
-      const container = pagesContainerRef.current;
-      if (container) {
-        // Direct transform application - no delays, no RAF, pure performance
+    // Native touch move handler - ULTRA-FAST, direct DOM manipulation
+    const handleTouchMoveNative = (e: TouchEvent) => {
+      if (isPinchingRef.current && pinchStartRef.current && e.touches.length === 2) {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        
+        // Ultra-fast zoom calculation
+        const baseZoom = pinchStartRef.current.zoom;
+        const newZoom = calculatePinchZoom(touch1, touch2, pinchStartRef.current.distance, baseZoom);
+        const clampedZoom = Math.max(1, Math.min(4, newZoom));
+        
+        // Update ref and apply transform IMMEDIATELY - no delays, no RAF
+        currentVisualZoomRef.current = clampedZoom;
         container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
-      }
-      
-      // No scroll adjustments, no other calculations - pure zoom performance
-    } else if (isPanning && panStart && e.touches.length === 1 && !isPinching) {
-      e.preventDefault();
-      e.stopPropagation();
-      const container = pagesContainerRef.current;
-      if (container) {
-        const deltaY = panStart.y - e.touches[0].clientY;
+        container.style.transformOrigin = 'top center';
+      } else if (isPanningRef.current && panStartRef.current && e.touches.length === 1 && !isPinchingRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        const deltaY = panStartRef.current.y - e.touches[0].clientY;
         const parentContainer = container.parentElement;
         if (parentContainer) {
-          parentContainer.scrollTop = panStart.scrollTop + deltaY;
+          parentContainer.scrollTop = panStartRef.current.scrollTop + deltaY;
         }
       }
-    }
-  };
+    };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!readOnly) return;
-    
-      // When pinch ends, keep the transform - don't trigger re-render
-      if (isPinching && pinchStart) {
-        const finalZoom = currentVisualZoomRef.current;
-        
-        // DON'T remove CSS transform - keep it for smooth experience
-        // DON'T update zoom state to avoid re-render
-        // Just update the ref for next pinch calculation
-        currentVisualZoomRef.current = finalZoom;
-        
-        // Update pinchStart.zoom to current zoom to prevent accumulation on next pinch
-        setPinchStart({
-          ...pinchStart,
-          zoom: finalZoom,
-        });
+    // Native touch end handler
+    const handleTouchEndNative = (e: TouchEvent) => {
+      if (isPinchingRef.current && pinchStartRef.current) {
+        // Update pinch start zoom for next pinch
+        pinchStartRef.current.zoom = currentVisualZoomRef.current;
       }
-    
-    if (e.touches.length === 0) {
-      setIsPanning(false);
-      setPanStart(null);
-      setIsPinching(false);
-      setPinchStart(null);
-    } else if (e.touches.length === 1 && isPinching) {
-      // Switched from pinch to pan
-      setIsPinching(false);
-      setPinchStart(null);
-      const container = pagesContainerRef.current;
-      if (container) {
+      
+      if (e.touches.length === 0) {
+        isPanningRef.current = false;
+        panStartRef.current = null;
+        isPinchingRef.current = false;
+        // Keep pinchStart for next pinch
+      } else if (e.touches.length === 1 && isPinchingRef.current) {
+        // Switched from pinch to pan
+        isPinchingRef.current = false;
         const parentContainer = container.parentElement;
-        setIsPanning(true);
-        setPanStart({
+        isPanningRef.current = true;
+        panStartRef.current = {
           x: e.touches[0].clientX,
           y: e.touches[0].clientY,
           scrollTop: parentContainer ? parentContainer.scrollTop : 0,
-        });
+        };
       }
-    }
-  };
+    };
+
+    // Add native event listeners with passive: false for full control
+    container.addEventListener('touchstart', handleTouchStartNative, { passive: false });
+    container.addEventListener('touchmove', handleTouchMoveNative, { passive: false });
+    container.addEventListener('touchend', handleTouchEndNative, { passive: false });
+    container.addEventListener('touchcancel', handleTouchEndNative, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStartNative);
+      container.removeEventListener('touchmove', handleTouchMoveNative);
+      container.removeEventListener('touchend', handleTouchEndNative);
+      container.removeEventListener('touchcancel', handleTouchEndNative);
+    };
+  }, [readOnly, calculatePinchZoom]);
+
 
   // Convert canvas coordinates to PDF coordinates (for signature positioning)
   const canvasToPdf = (pageNum: number, canvasX: number, canvasY: number, canvasWidth: number, canvasHeight: number) => {
@@ -437,9 +422,6 @@ export default function PDFViewer({
             WebkitTransform: 'translate3d(0, 0, 0)',
             contain: 'layout style paint',
           }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
         >
           {/* Pages are rendered here by useEffect */}
         </div>
@@ -480,9 +462,6 @@ export default function PDFViewer({
             WebkitTransform: 'translate3d(0, 0, 0)',
             contain: 'layout style paint',
           } : {}}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
         >
           {/* Pages are rendered here by useEffect */}
         </div>
