@@ -47,3 +47,6 @@ docs-site/.vitepress/cache/
 # Build info (generated at build time, must not be committed)
 frontend/src/build-info.json
 
+# Server configuration (sensitive - never commit)
+server-config.local
+

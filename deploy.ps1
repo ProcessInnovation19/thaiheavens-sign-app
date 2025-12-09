@@ -86,12 +86,30 @@ Write-Host ""
 # Step 7: Opzione per deploy manuale via SSH
 $deployNow = Read-Host "Vuoi fare il deploy ora via SSH? (s/n)"
 if ($deployNow -eq "s" -or $deployNow -eq "S") {
-    $server = Read-Host "Indirizzo server SSH (es: root@sign.process-innovation.it)"
+    # Try to read server config from local file
+    $server = $null
+    if (Test-Path "server-config.local") {
+        Write-Host "   Lettura configurazione da server-config.local..." -ForegroundColor Gray
+        $configContent = Get-Content "server-config.local" | Where-Object { $_ -match "^SERVER_" }
+        $serverHost = ($configContent | Where-Object { $_ -match "^SERVER_HOST=" }) -replace "SERVER_HOST=", ""
+        $serverUser = ($configContent | Where-Object { $_ -match "^SERVER_USER=" }) -replace "SERVER_USER=", ""
+        if ($serverHost -and $serverUser) {
+            $server = "$serverUser@$serverHost"
+            Write-Host "   Server configurato: $server" -ForegroundColor Green
+        }
+    }
+    
+    # If no config file or failed to read, ask user
+    if (-not $server) {
+        $server = Read-Host "Indirizzo server SSH (es: root@sign.process-innovation.it)"
+    }
+    
     if ($server) {
         Write-Host ""
         Write-Host "Connessione al server..." -ForegroundColor Yellow
         $deployScript = @"
 cd /home/fabrizio/webapps/thaiheavens-sign-app
+git stash
 git pull origin main
 cd backend
 npm run build

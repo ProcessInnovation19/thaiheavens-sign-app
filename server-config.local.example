@@ -1,0 +1,14 @@
+# Server Configuration (Example)
+# Copy this file to server-config.local and fill in your credentials
+# This file is gitignored and will not be committed
+
+SERVER_HOST=picl6.process-innovation.it
+SERVER_IP=94.237.101.88
+SERVER_USER=root
+# Password: [DO NOT STORE IN PLAIN TEXT - Use SSH keys instead]
+
+# To use SSH keys instead of password:
+# 1. Generate SSH key: ssh-keygen -t rsa -b 4096
+# 2. Copy to server: ssh-copy-id root@94.237.101.88
+# 3. Then you can SSH without password
+
