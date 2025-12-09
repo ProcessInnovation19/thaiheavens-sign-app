@@ -285,30 +285,39 @@ export default function PDFViewer({
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       
-      // Use current zoom state, not pinchStart.zoom, to avoid accumulation errors
-      const currentZoom = zoom;
-      const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, currentZoom);
-      
-      // Clamp zoom between 1 (fit to width) and 4 (max zoom) and update immediately
-      const clampedZoom = Math.max(1, Math.min(4, newZoom));
-      setZoom(clampedZoom);
-      
-      // Update pinchStart.zoom to current zoom for next calculation
-      setPinchStart(prev => prev ? { ...prev, zoom: clampedZoom } : null);
-      
-      // Adjust scroll to keep pinch center in view
-      const container = pagesContainerRef.current;
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
-        const newScrollTop = calculateScrollForZoom(
-          { x: 0, y: centerY + pinchStart.scrollTop },
-          currentZoom,
-          clampedZoom,
-          pinchStart.scrollTop
-        );
-        container.scrollTop = newScrollTop;
+      // Use requestAnimationFrame for smooth zoom updates
+      if (zoomUpdateRef.current !== null) {
+        cancelAnimationFrame(zoomUpdateRef.current);
       }
+      
+      zoomUpdateRef.current = requestAnimationFrame(() => {
+        // Use current zoom state, not pinchStart.zoom, to avoid accumulation errors
+        const currentZoom = zoom;
+        const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, currentZoom);
+        
+        // Clamp zoom between 1 (fit to width) and 4 (max zoom)
+        const clampedZoom = Math.max(1, Math.min(4, newZoom));
+        setZoom(clampedZoom);
+        
+        // Update pinchStart.zoom to current zoom for next calculation
+        setPinchStart(prev => prev ? { ...prev, zoom: clampedZoom } : null);
+        
+        // Adjust scroll to keep pinch center in view
+        const container = pagesContainerRef.current;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+          const newScrollTop = calculateScrollForZoom(
+            { x: 0, y: centerY + pinchStart.scrollTop },
+            currentZoom,
+            clampedZoom,
+            pinchStart.scrollTop
+          );
+          container.scrollTop = newScrollTop;
+        }
+        
+        zoomUpdateRef.current = null;
+      });
     } else if (isPanning && panStart && e.touches.length === 1 && !isPinching) {
       e.preventDefault();
       const container = pagesContainerRef.current;
