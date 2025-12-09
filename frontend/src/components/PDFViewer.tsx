@@ -232,17 +232,6 @@ export default function PDFViewer({
     return Math.max(1, Math.min(4, newZoom));
   }, []);
 
-  // Calculate scroll position to keep pinch center in view
-  const calculateScrollForZoom = useCallback((
-    pinchCenter: { x: number; y: number },
-    oldZoom: number,
-    newZoom: number,
-    currentScrollTop: number
-  ) => {
-    const zoomRatio = newZoom / oldZoom;
-    const scrollDelta = (pinchCenter.y - currentScrollTop) * (zoomRatio - 1);
-    return currentScrollTop + scrollDelta;
-  }, []);
 
   // Touch handlers for improved pinch-to-zoom
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -307,7 +296,7 @@ export default function PDFViewer({
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       
-      // Calculate zoom directly for immediate response - NO throttling, NO requestAnimationFrame
+      // Calculate zoom directly for immediate response
       // Use pinchStart.zoom as base to avoid accumulation errors
       const baseZoom = pinchStart.zoom;
       const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, baseZoom);
@@ -318,31 +307,23 @@ export default function PDFViewer({
       // Update ref (no state update = no re-render = maximum smoothness)
       currentVisualZoomRef.current = clampedZoom;
       
-      // Apply CSS transform to the ENTIRE container for smooth, fluid zoom
-      // This makes everything zoom together (like the post-sign viewer)
-      const container = pagesContainerRef.current;
-      if (container) {
-        // Apply transform directly - scale from base zoom 1
-        // This gives smooth, fluid zoom without re-renders
-        container.style.transform = `scale(${clampedZoom})`;
-        container.style.transformOrigin = 'top center';
-        container.style.willChange = 'transform'; // Optimize for smooth transforms
-        
-        // Adjust scroll to keep pinch center in view
-        const parentContainer = container.parentElement;
-        if (parentContainer) {
-          const rect = parentContainer.getBoundingClientRect();
-          const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
-          const currentScrollTop = parentContainer.scrollTop;
-          const newScrollTop = calculateScrollForZoom(
-            { x: 0, y: centerY + currentScrollTop },
-            baseZoom,
-            clampedZoom,
-            currentScrollTop
-          );
-          parentContainer.scrollTop = newScrollTop;
+      // Apply CSS transform using requestAnimationFrame for ultra-smooth, native-like zoom
+      // This ensures the transform is applied at the optimal time for rendering
+      requestAnimationFrame(() => {
+        const container = pagesContainerRef.current;
+        if (container) {
+          // Apply transform with hardware acceleration hints
+          container.style.transform = `translateZ(0) scale(${clampedZoom})`;
+          container.style.transformOrigin = 'top center';
+          container.style.willChange = 'transform';
+          // Force GPU acceleration
+          container.style.backfaceVisibility = 'hidden';
+          container.style.perspective = '1000px';
         }
-      }
+      });
+      
+      // Don't adjust scroll during pinch - let browser handle it naturally for maximum smoothness
+      // This prevents janky scroll calculations that can cause stuttering
     } else if (isPanning && panStart && e.touches.length === 1 && !isPinching) {
       e.preventDefault();
       e.stopPropagation();
@@ -458,6 +439,10 @@ export default function PDFViewer({
             overflow: 'auto',
             margin: 0,
             padding: 0,
+            willChange: 'transform',
+            backfaceVisibility: 'hidden',
+            perspective: '1000px',
+            transform: 'translateZ(0)',
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -495,6 +480,10 @@ export default function PDFViewer({
             overflow: zoom > 1 ? 'auto' : 'y-auto',
             overflowX: zoom > 1 ? 'auto' : 'hidden',
             overflowY: 'auto',
+            willChange: 'transform',
+            backfaceVisibility: 'hidden',
+            perspective: '1000px',
+            transform: 'translateZ(0)',
           } : {}}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}

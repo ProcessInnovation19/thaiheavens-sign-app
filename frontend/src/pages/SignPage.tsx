@@ -309,10 +309,6 @@ export default function SignPage() {
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   Secure Session
                 </div>
-                {/* Version number for testing deployments */}
-                <div className="text-xs font-mono bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 font-bold">
-                  v{buildInfo.version || buildInfo.timestamp?.slice(-4) || '1.0'}
-                </div>
               </div>
             </div>
           </div>
