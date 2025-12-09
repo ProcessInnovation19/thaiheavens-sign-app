@@ -300,9 +300,54 @@ export default function PDFViewer({
         currentVisualZoomRef.current = clampedZoom;
         container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
         container.style.transformOrigin = 'top center';
+      } else if (isPanningRef.current && panStartRef.current && e.touches.length === 1 && !isPinchingRef.current) {
+        // During manual pan (single finger drag when zoomed), handle scroll manually
+        // This allows simultaneous vertical and horizontal movement like Google PDF Viewer
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const deltaX = panStartRef.current.x - e.touches[0].clientX;
+        const deltaY = panStartRef.current.y - e.touches[0].clientY;
+        const parentContainer = container.parentElement;
+        
+        if (parentContainer) {
+          // Calculate new scroll positions
+          let newScrollLeft = panStartRef.current.scrollLeft + deltaX;
+          let newScrollTop = panStartRef.current.scrollTop + deltaY;
+          
+          // Get current zoom to calculate limits
+          const currentZoom = currentVisualZoomRef.current;
+          const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+          const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
+          
+          // Calculate scroll limits based on zoom and container dimensions
+          // When using transform: scale(), the content is visually zoomed but container dimensions stay the same
+          // The scrollable area is the difference between scaled content and viewport
+          const containerWidth = parentContainer.clientWidth;
+          const containerHeight = parentContainer.clientHeight;
+          const contentWidth = container.scrollWidth;
+          const contentHeight = container.scrollHeight;
+          
+          // When zoomed, the scaled content extends beyond the viewport
+          // Scroll limits = (scaled content size) - (viewport size)
+          const scaledContentWidth = contentWidth * zoom;
+          const scaledContentHeight = contentHeight * zoom;
+          
+          // Calculate max scroll (stops at edges like Google PDF Viewer)
+          // The content is zoom times larger, so we can scroll (zoom - 1) * contentSize
+          const maxScrollLeft = Math.max(0, (scaledContentWidth - containerWidth) / zoom);
+          const maxScrollTop = Math.max(0, (scaledContentHeight - containerHeight) / zoom);
+          
+          // Clamp scroll to boundaries (stops at edges like Google PDF Viewer)
+          newScrollLeft = Math.max(0, Math.min(maxScrollLeft, newScrollLeft));
+          newScrollTop = Math.max(0, Math.min(maxScrollTop, newScrollTop));
+          
+          // Apply scroll - smooth and simultaneous in both directions
+          parentContainer.scrollLeft = newScrollLeft;
+          parentContainer.scrollTop = newScrollTop;
+        }
       }
-      // Single finger: let browser handle native scroll naturally (works at any zoom level)
-      // Don't prevent default - allow natural scrolling like a zoomed webpage
+      // If not pinching or panning, let browser handle native scroll
     };
 
     // Native touch end handler
@@ -319,8 +364,25 @@ export default function PDFViewer({
         isPinchingRef.current = false;
         // Keep pinchStart for next pinch
       } else if (e.touches.length === 1 && isPinchingRef.current) {
-        // Switched from pinch (2 fingers) to single finger - let browser handle scroll
+        // Switched from pinch (2 fingers) to single finger
         isPinchingRef.current = false;
+        // Start manual pan if zoomed
+        const currentZoom = currentVisualZoomRef.current;
+        const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+        const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
+        
+        if (zoom > 1) {
+          const parentContainer = container.parentElement;
+          if (parentContainer) {
+            isPanningRef.current = true;
+            panStartRef.current = {
+              x: e.touches[0].clientX,
+              y: e.touches[0].clientY,
+              scrollLeft: parentContainer.scrollLeft,
+              scrollTop: parentContainer.scrollTop,
+            };
+          }
+        }
       }
     };
 
