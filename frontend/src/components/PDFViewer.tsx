@@ -204,34 +204,34 @@ export default function PDFViewer({
           if (!readOnly && onPageClick) {
             canvas.addEventListener('click', (e) => {
               const rect = canvas.getBoundingClientRect();
+              // Calculate scale: canvas internal size / displayed size
               const scaleX = canvas.width / rect.width;
               const scaleY = canvas.height / rect.height;
+              // Convert click position to canvas coordinates
               const canvasX = (e.clientX - rect.left) * scaleX;
               const canvasY = (e.clientY - rect.top) * scaleY;
               const pdfCoords = canvasToPdf(pageNum, canvasX, canvasY, 0, 0);
               
-              // Default signature box size (200x100, 2:1 aspect ratio)
+              // Default signature box size (200x100, 2:1 aspect ratio) in canvas coordinates
               const defaultWidth = 200;
               const defaultHeight = 100;
               
               // Center the box on click position (using canvas coordinates directly, like AdminPage)
               if (onPositionUpdate && pagesRef.current[pageNum - 1]) {
                 const pageInfo = pagesRef.current[pageNum - 1];
-                // Use canvasX and canvasY directly (like AdminPage does)
-                // These are the coordinates in the canvas coordinate system
+                // Center the box on the click position
                 const boxX = canvasX - defaultWidth / 2;
                 const boxY = canvasY - defaultHeight / 2;
                 
                 // Convert to PDF coordinates (scale 1.0)
-                // AdminPage uses scale 1.5 for display, so we need to convert
                 const displayScale = pageInfo.viewport.scale || 1;
                 const pdfScaleRatio = 1.0 / displayScale;
                 const pdfWidth = defaultWidth * pdfScaleRatio;
                 const pdfHeight = defaultHeight * pdfScaleRatio;
                 const pdfBoxX = (canvasX * pdfScaleRatio) - pdfWidth / 2;
-                // PDF coordinates - use canvasY directly (like AdminPage does)
                 const pdfBoxY = (canvasY * pdfScaleRatio) - pdfHeight / 2;
                 
+                // Update position immediately
                 onPositionUpdate({
                   x: boxX,
                   y: boxY,
