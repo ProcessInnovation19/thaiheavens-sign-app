@@ -44,7 +44,7 @@ export default function PDFViewer({
   const isPanningRef = useRef(false);
   const panStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
   const isPinchingRef = useRef(false);
-  const pinchStartRef = useRef<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
+  const pinchStartRef = useRef<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number; scrollLeft: number } | null>(null);
   const currentVisualZoomRef = useRef<number>(1); // Track visual zoom without state updates
 
   // Note: selectedPage is used for signature positioning, not for navigation
@@ -268,14 +268,24 @@ export default function PDFViewer({
         }
         currentVisualZoomRef.current = currentZoom;
         
+        // Calculate center point of the two touches (in viewport coordinates)
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
+        
+        // Get container's bounding rect to convert to container-relative coordinates
+        const containerRect = container.getBoundingClientRect();
+        const centerXRelative = centerX - containerRect.left;
+        const centerYRelative = centerY - containerRect.top;
+        
         // Store pinch start in ref (no state = no re-render)
         isPinchingRef.current = true;
         isPanningRef.current = false;
         pinchStartRef.current = {
           distance,
           zoom: currentZoom,
-          center: { x: 0, y: 0 }, // Not used, but kept for compatibility
+          center: { x: centerXRelative, y: centerYRelative },
           scrollTop: parentContainer ? parentContainer.scrollTop : 0,
+          scrollLeft: parentContainer ? parentContainer.scrollLeft : 0,
         };
       } else if (e.touches.length === 1) {
         // Single finger: check if zoomed, if so handle pan manually (like Google PDF Viewer)
@@ -315,10 +325,42 @@ export default function PDFViewer({
         const newZoom = calculatePinchZoom(touch1, touch2, pinchStartRef.current.distance, baseZoom);
         const clampedZoom = Math.max(1, Math.min(4, newZoom));
         
-        // Update ref and apply transform IMMEDIATELY - no delays, no RAF
+        // Get parent container for scroll adjustment
+        const parentContainer = container.parentElement;
+        if (parentContainer && pinchStartRef.current) {
+          // Calculate current center point (in viewport coordinates)
+          const currentCenterX = (touch1.clientX + touch2.clientX) / 2;
+          const currentCenterY = (touch1.clientY + touch2.clientY) / 2;
+          const containerRect = container.getBoundingClientRect();
+          const currentCenterXRelative = currentCenterX - containerRect.left;
+          const currentCenterYRelative = currentCenterY - containerRect.top;
+          
+          // Calculate the point in the content that corresponds to the pinch center
+          // This is the point that should stay under the fingers during zoom
+          const centerXInContent = pinchStartRef.current.center.x;
+          const centerYInContent = pinchStartRef.current.center.y;
+          
+          // Calculate zoom change
+          const zoomChange = clampedZoom / baseZoom;
+          
+          // When zooming, the content grows. To keep the center point under the fingers,
+          // we need to adjust the scroll position.
+          // The formula: newScroll = oldScroll + (centerInContent * (zoomChange - 1))
+          // This accounts for how much the content has grown at that point
+          const scrollDeltaX = centerXInContent * (zoomChange - 1);
+          const scrollDeltaY = centerYInContent * (zoomChange - 1);
+          
+          // Apply zoom with center point as transform origin (this makes the zoom happen from the center)
+          container.style.transformOrigin = `${currentCenterXRelative}px ${currentCenterYRelative}px`;
+          container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
+          
+          // Adjust scroll to keep the pinch center under the fingers
+          parentContainer.scrollLeft = pinchStartRef.current.scrollLeft + scrollDeltaX;
+          parentContainer.scrollTop = pinchStartRef.current.scrollTop + scrollDeltaY;
+        }
+        
+        // Update ref
         currentVisualZoomRef.current = clampedZoom;
-        container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
-        container.style.transformOrigin = 'top left'; // Scale from top-left so content expands only right and down
       } else if (isPanningRef.current && panStartRef.current && e.touches.length === 1 && !isPinchingRef.current) {
         // During manual pan (single finger drag when zoomed), handle scroll manually
         // This allows simultaneous vertical and horizontal movement like Google PDF Viewer
@@ -374,8 +416,13 @@ export default function PDFViewer({
     // Native touch end handler
     const handleTouchEndNative = (e: TouchEvent) => {
       if (isPinchingRef.current && pinchStartRef.current) {
-        // Update pinch start zoom for next pinch
-        pinchStartRef.current.zoom = currentVisualZoomRef.current;
+        // Update pinch start zoom and scroll for next pinch
+        const parentContainer = container.parentElement;
+        if (parentContainer) {
+          pinchStartRef.current.zoom = currentVisualZoomRef.current;
+          pinchStartRef.current.scrollTop = parentContainer.scrollTop;
+          pinchStartRef.current.scrollLeft = parentContainer.scrollLeft;
+        }
       }
       
       if (e.touches.length === 0) {
@@ -385,16 +432,16 @@ export default function PDFViewer({
         isPinchingRef.current = false;
         // Keep pinchStart for next pinch
       } else if (e.touches.length === 1 && isPinchingRef.current) {
-        // Switched from pinch (2 fingers) to single finger
+        // Switched from pinch (2 fingers) to single finger - start manual pan immediately
         isPinchingRef.current = false;
-        // Start manual pan if zoomed
-        const currentZoom = currentVisualZoomRef.current;
-        const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
-        const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
-        
-        if (zoom > 1) {
-          const parentContainer = container.parentElement;
-          if (parentContainer) {
+        const parentContainer = container.parentElement;
+        if (parentContainer) {
+          // Always activate pan when zoomed (zoom > 1)
+          const currentZoom = currentVisualZoomRef.current;
+          const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+          const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
+          
+          if (zoom > 1) {
             isPanningRef.current = true;
             panStartRef.current = {
               x: e.touches[0].clientX,
