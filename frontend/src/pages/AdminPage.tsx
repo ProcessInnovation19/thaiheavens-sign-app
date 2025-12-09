@@ -21,7 +21,6 @@ export default function AdminPage() {
     pdfHeight?: number;
   } | null>(null);
   const [guestName, setGuestName] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -281,7 +280,6 @@ export default function AdminPage() {
     setPdfUrl(null);
     setSelectedPosition(null);
     setGuestName('');
-    setGuestEmail('');
     setPublicUrl(null);
     setError(null);
     setEmailSent(false);

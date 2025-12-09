@@ -1,0 +1,5 @@
+[33m606b48f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Fix fullscreen timing, add version number v1.2.4, fix zoom and X button positioning
+[33md215d11[m[33m ([m[1;31morigin/main[m[33m)[m Add single command deploy script (npm run deploy:now)
+[33m62b09f2[m Deploy from Cursor
+[33mdcaae80[m Deploy from Cursor
+[33mbad234f[m Add server config file and auto-read credentials in deploy script
