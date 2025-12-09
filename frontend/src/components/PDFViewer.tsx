@@ -277,9 +277,28 @@ export default function PDFViewer({
           center: { x: 0, y: 0 }, // Not used, but kept for compatibility
           scrollTop: parentContainer ? parentContainer.scrollTop : 0,
         };
+      } else if (e.touches.length === 1) {
+        // Single finger: check if zoomed, if so handle pan manually (like Google PDF Viewer)
+        const currentZoom = currentVisualZoomRef.current;
+        const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
+        const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
+        
+        // Always prevent default when zoomed to handle pan manually (allows simultaneous movement)
+        if (zoom > 1) {
+          e.preventDefault(); // Prevent default to handle pan manually
+          const parentContainer = container.parentElement;
+          if (parentContainer) {
+            isPanningRef.current = true;
+            panStartRef.current = {
+              x: e.touches[0].clientX,
+              y: e.touches[0].clientY,
+              scrollLeft: parentContainer.scrollLeft,
+              scrollTop: parentContainer.scrollTop,
+            };
+          }
+        }
+        // If not zoomed, let browser handle native scroll (don't prevent default)
       }
-      // Single finger: always let browser handle native scroll (works at any zoom level)
-      // Don't prevent default - allow natural scrolling like a zoomed webpage
     };
 
     // Native touch move handler - ULTRA-FAST, direct DOM manipulation
