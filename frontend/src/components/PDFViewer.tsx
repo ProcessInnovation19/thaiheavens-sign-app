@@ -215,20 +215,7 @@ export default function PDFViewer({
   // NOTE: Removed 'zoom' from dependencies to prevent re-render during pinch
   // Zoom is now handled purely with CSS transform for smooth experience
 
-  // Ultra-fast pinch-to-zoom calculation - optimized for performance
-  // Use simple distance calculation instead of Math.hypot for speed
-  const calculatePinchZoom = (touch1: Touch, touch2: Touch, startDistance: number, startZoom: number) => {
-    const dx = touch2.clientX - touch1.clientX;
-    const dy = touch2.clientY - touch1.clientY;
-    // Fast distance calculation (avoid Math.hypot for performance)
-    const currentDistance = Math.sqrt(dx * dx + dy * dy);
-    // Calculate scale based on distance change
-    const scale = currentDistance / startDistance;
-    // Apply scale to current zoom
-    const newZoom = startZoom * scale;
-    // Minimum zoom is 1 (fit to container width), maximum is 4
-    return Math.max(1, Math.min(4, newZoom));
-  };
+  // Removed calculatePinchZoom - no zoom functionality
 
 
   // Removed all touch event handlers - using native scroll only
