@@ -427,12 +427,15 @@ export default function PDFViewer({
       {/* Pages container - Google PDF Reader style: all pages vertical */}
       <div
         ref={containerRef}
-        className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto' : 'p-1 sm:p-2'}`}
+        className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
           height: isMobile ? '100dvh' : '70vh', // Full height on mobile when header is hidden
-          touchAction: 'pan-y pinch-zoom',
+          touchAction: zoom > 1 ? 'pan-x pan-y pinch-zoom' : 'pan-y pinch-zoom',
           WebkitOverflowScrolling: 'touch',
           maxHeight: isMobile ? '100dvh' : '70vh',
+          overflow: zoom > 1 ? 'auto' : 'y-auto',
+          overflowX: zoom > 1 ? 'auto' : 'hidden',
+          overflowY: 'auto',
         } : {}}
       >
         <div
