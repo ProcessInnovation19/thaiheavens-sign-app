@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
-import { fileURLToPath, URL } from 'node:url'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import type { Plugin } from 'vite'
 
 // Generate build timestamp
