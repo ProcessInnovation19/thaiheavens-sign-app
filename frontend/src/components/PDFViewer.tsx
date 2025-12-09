@@ -578,15 +578,18 @@ export default function PDFViewer({
           }}
           onTouchStart={(e) => {
             if (readOnly) {
-              if (e.touches.length === 1) {
-                // Single touch: pan
+              // Prevent default to avoid scrolling
+              if (e.touches.length === 2) {
+                e.preventDefault();
+              }
+              
+              if (e.touches.length === 1 && !isPinching) {
+                // Single touch: pan (only if not pinching)
                 const touch = e.touches[0];
                 setIsPanning(true);
                 setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
-                setIsPinching(false);
               } else if (e.touches.length === 2) {
                 // Two touches: pinch-to-zoom
-                e.preventDefault();
                 const touch1 = e.touches[0];
                 const touch2 = e.touches[1];
                 const distance = Math.hypot(
@@ -640,8 +643,8 @@ export default function PDFViewer({
                 } else {
                   setZoom(newZoom);
                 }
-              } else if (isPanning && panStart && e.touches.length === 1) {
-                // Single touch pan
+              } else if (isPanning && panStart && e.touches.length === 1 && !isPinching) {
+                // Single touch pan (only if not pinching)
                 e.preventDefault();
                 const touch = e.touches[0];
                 setPanOffset({
@@ -666,6 +669,10 @@ export default function PDFViewer({
                 const touch = e.touches[0];
                 setIsPanning(true);
                 setPanStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+              } else if (e.touches.length === 2 && isPanning) {
+                // Switched from pan to pinch
+                setIsPanning(false);
+                setPanStart(null);
               }
             }
           }}

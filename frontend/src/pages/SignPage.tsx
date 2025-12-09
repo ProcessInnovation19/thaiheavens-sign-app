@@ -149,6 +149,11 @@ export default function SignPage() {
   const handleClearAndSignAgain = () => {
     setSignatureDataUrl('');
     setSignedPdfUrl(null);
+    setSignedSessionId(null);
+    setStep('sign');
+    setShowSignatureModal(true);
+    setSignatureDataUrl('');
+    setSignedPdfUrl(null);
     setStep('sign');
   };
 
@@ -511,17 +516,6 @@ export default function SignPage() {
         {step === 'preview' && session && (
           <div className="animate-fade-in">
             <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-soft border border-white/50 p-6 md:p-8">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl mb-4 shadow-lg">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Preview Signature</h2>
-                <p className="text-slate-600">Review the page with your signature before confirming</p>
-              </div>
-              
               {signedPdfUrl && (
                 <>
                   {/* Mobile: Card that opens fullscreen viewer */}
@@ -529,30 +523,23 @@ export default function SignPage() {
                     <div className="mb-4">
                       <div 
                         onClick={() => setShowPdfViewer(true)}
-                        className="bg-gradient-to-br from-slate-50 to-blue-50 border-2 border-slate-200 rounded-xl p-6 cursor-pointer hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4 cursor-pointer hover:border-purple-400 transition-all duration-200 shadow-md hover:shadow-lg"
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center shadow-md">
                               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             </div>
                             <div>
-                              <h3 className="font-bold text-slate-900">Preview Document</h3>
-                              <p className="text-sm text-slate-600">Tap to open fullscreen viewer</p>
+                              <h3 className="font-bold text-slate-900 text-base">Documento Firmato</h3>
+                              <p className="text-sm text-slate-600">Tap to view signed document</p>
                             </div>
                           </div>
-                          <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
                           </svg>
-                        </div>
-                        <div className="bg-white rounded-lg p-2 border border-slate-200">
-                          <PDFViewer 
-                            pdfUrl={signedPdfUrl} 
-                            readOnly={true}
-                            selectedPage={session.page + 1}
-                          />
                         </div>
                       </div>
                     </div>
