@@ -39,7 +39,7 @@ export default function PDFViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Zoom and pan for readOnly mode - start at 1 (fit to width)
-  const [zoom, setZoom] = useState(1);
+  const [zoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number; scrollTop: number } | null>(null);
   const [isPinching, setIsPinching] = useState(false);
@@ -265,7 +265,6 @@ export default function PDFViewer({
         const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
         
         // Get current visual zoom from transform if exists, otherwise use state
-        const container = pagesContainerRef.current;
         let currentZoom = zoom;
         if (container && container.style.transform) {
           // Extract zoom from existing transform
