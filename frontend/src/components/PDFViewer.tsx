@@ -100,7 +100,6 @@ export default function PDFViewer({
   // Render all pages in vertical layout (Google PDF Reader style)
   useEffect(() => {
     if (!pdfRef.current || !pagesContainerRef.current || loading) return;
-    if (!readOnly && selectedPosition) return; // Don't re-render if positioning signature
 
     const renderAllPages = async () => {
       const container = pagesContainerRef.current;
