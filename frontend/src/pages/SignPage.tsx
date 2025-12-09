@@ -412,14 +412,19 @@ export default function SignPage() {
                     <button
                       onClick={() => {
                         setShowSignatureModal(false);
+                        setStep('view');
+                        setSignatureDataUrl('');
                         // Exit fullscreen if active
                         if (document.fullscreenElement) {
                           document.exitFullscreen().catch(() => {});
                         }
                       }}
-                      className="mt-6 px-6 py-3 bg-white/20 hover:bg-white/30 rounded-lg font-semibold transition-colors"
+                      className="mt-6 px-6 py-3 bg-white/20 hover:bg-white/30 rounded-lg font-semibold transition-colors flex items-center gap-2"
                     >
-                      Cancel
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                      </svg>
+                      Indietro
                     </button>
                   </div>
                 )}
@@ -432,18 +437,20 @@ export default function SignPage() {
                       <button
                         onClick={() => {
                           setShowSignatureModal(false);
+                          setStep('view');
                           setSignatureDataUrl('');
                           // Exit fullscreen if active
                           if (document.fullscreenElement) {
                             document.exitFullscreen().catch(() => {});
                           }
                         }}
-                        className="absolute top-4 right-4 z-50 w-10 h-10 bg-red-500/90 hover:bg-red-600 text-white rounded-lg flex items-center justify-center transition-colors shadow-2xl"
-                        aria-label="Close"
+                        className="absolute top-4 left-4 z-50 px-4 py-2 bg-white/90 hover:bg-white text-slate-700 rounded-lg flex items-center gap-2 transition-colors shadow-2xl font-semibold"
+                        aria-label="Indietro"
                       >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
+                        <span className="hidden sm:inline">Indietro</span>
                       </button>
                     )}
                     
