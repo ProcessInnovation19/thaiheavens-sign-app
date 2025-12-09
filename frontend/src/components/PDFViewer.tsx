@@ -145,6 +145,8 @@ export default function PDFViewer({
           canvas.style.width = `${containerWidth * effectiveZoom}px`;
           canvas.style.height = 'auto';
           canvas.style.display = 'block';
+          // Add top margin only to first page, bottom margin to all pages
+          canvas.style.marginTop = pageNum === 1 ? '16px' : '0';
           canvas.style.marginBottom = '24px'; // Increased space between pages
           canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'; // Elevated shadow effect
           canvas.style.backgroundColor = '#ffffff';
@@ -291,16 +293,14 @@ export default function PDFViewer({
       }
       
       zoomUpdateRef.current = requestAnimationFrame(() => {
-        // Use current zoom state, not pinchStart.zoom, to avoid accumulation errors
-        const currentZoom = zoom;
-        const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, currentZoom);
+        // Use pinchStart.zoom as base to avoid accumulation errors
+        // This ensures smooth zooming from the initial pinch point
+        const baseZoom = pinchStart.zoom;
+        const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, baseZoom);
         
         // Clamp zoom between 1 (fit to width) and 4 (max zoom)
         const clampedZoom = Math.max(1, Math.min(4, newZoom));
         setZoom(clampedZoom);
-        
-        // Update pinchStart.zoom to current zoom for next calculation
-        setPinchStart(prev => prev ? { ...prev, zoom: clampedZoom } : null);
         
         // Adjust scroll to keep pinch center in view
         const container = pagesContainerRef.current;

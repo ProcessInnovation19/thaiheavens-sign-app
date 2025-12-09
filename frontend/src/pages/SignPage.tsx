@@ -353,12 +353,18 @@ export default function SignPage() {
                     </div>
                   )}
                   
-                  {/* Mobile Fullscreen PDF Viewer Modal - Adobe Reader Light style */}
+                  {/* Mobile Fullscreen PDF Viewer Modal - Google PDF Reader style */}
                   {typeof window !== 'undefined' && window.innerWidth < 768 && showPdfViewer && (
-                    <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+                    <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col" style={{ height: '100dvh', width: '100vw' }}>
                       {/* Close button - top left, minimal */}
                       <button
-                        onClick={() => setShowPdfViewer(false)}
+                        onClick={() => {
+                          setShowPdfViewer(false);
+                          // Exit fullscreen if active
+                          if (document.fullscreenElement) {
+                            document.exitFullscreen().catch(() => {});
+                          }
+                        }}
                         className="absolute top-2 left-2 z-50 w-10 h-10 bg-black/70 hover:bg-black/90 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg backdrop-blur-sm"
                         aria-label="Close"
                       >
@@ -603,9 +609,9 @@ export default function SignPage() {
                     </div>
                   )}
                   
-                  {/* Mobile Fullscreen PDF Viewer Modal - Adobe Reader Light style */}
+                  {/* Mobile Fullscreen PDF Viewer Modal - Google PDF Reader style */}
                   {typeof window !== 'undefined' && window.innerWidth < 768 && showPdfViewer && (
-                    <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+                    <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col" style={{ height: '100dvh', width: '100vw' }}>
                       {/* Close button - top left, minimal */}
                       <button
                         onClick={() => {
