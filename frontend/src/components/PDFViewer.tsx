@@ -210,17 +210,17 @@ export default function PDFViewer({
   }, [pdfUrl, numPages, zoom, readOnly, selectedPosition, onViewportReady]);
 
   // Improved pinch-to-zoom calculation - zoom out minimum is 1 (fit to width)
-  // More sensitive zoom with smoother increments
   const calculatePinchZoom = useCallback((touch1: React.Touch, touch2: React.Touch, startDistance: number, startZoom: number) => {
     const currentDistance = Math.hypot(
       touch2.clientX - touch1.clientX,
       touch2.clientY - touch1.clientY
     );
-    // More sensitive zoom calculation - multiply by 1.2 for better responsiveness
-    const scale = (currentDistance / startDistance) * 1.2;
+    // Calculate scale based on distance change
+    const scale = currentDistance / startDistance;
+    // Apply scale to current zoom
+    const newZoom = startZoom * scale;
     // Minimum zoom is 1 (fit to container width), maximum is 4
-    const newZoom = Math.max(1, Math.min(4, startZoom * scale));
-    return newZoom;
+    return Math.max(1, Math.min(4, newZoom));
   }, []);
 
   // Calculate scroll position to keep pinch center in view
@@ -284,11 +284,16 @@ export default function PDFViewer({
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       
-      const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, pinchStart.zoom);
+      // Use current zoom state, not pinchStart.zoom, to avoid accumulation errors
+      const currentZoom = zoom;
+      const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, currentZoom);
       
       // Clamp zoom between 1 (fit to width) and 4 (max zoom) and update immediately
       const clampedZoom = Math.max(1, Math.min(4, newZoom));
       setZoom(clampedZoom);
+      
+      // Update pinchStart.zoom to current zoom for next calculation
+      setPinchStart(prev => prev ? { ...prev, zoom: clampedZoom } : null);
       
       // Adjust scroll to keep pinch center in view
       const container = pagesContainerRef.current;
@@ -297,7 +302,7 @@ export default function PDFViewer({
         const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
         const newScrollTop = calculateScrollForZoom(
           { x: 0, y: centerY + pinchStart.scrollTop },
-          pinchStart.zoom,
+          currentZoom,
           clampedZoom,
           pinchStart.scrollTop
         );
@@ -405,10 +410,10 @@ export default function PDFViewer({
         ref={containerRef}
         className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
-          height: isMobile ? 'calc(100dvh - 80px)' : '70vh', // Subtract header height on mobile, use dvh for dynamic viewport
+          height: isMobile ? 'calc(100dvh - 120px)' : '70vh', // Subtract header height + padding on mobile
           touchAction: 'pan-y pinch-zoom',
           WebkitOverflowScrolling: 'touch',
-          maxHeight: isMobile ? 'calc(100dvh - 80px)' : '70vh',
+          maxHeight: isMobile ? 'calc(100dvh - 120px)' : '70vh',
         } : {}}
       >
         <div

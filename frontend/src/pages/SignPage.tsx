@@ -56,19 +56,39 @@ export default function SignPage() {
   // Request fullscreen when signature modal opens on mobile
   useEffect(() => {
     if (showSignatureModal && typeof window !== 'undefined' && window.innerWidth < 768) {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {
-          // Ignore errors if fullscreen is not available
-        });
-      }
+      // Small delay to ensure modal is rendered
+      const timer = setTimeout(() => {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch((err) => {
+            console.log('Fullscreen error:', err);
+          });
+        } else if ((document.documentElement as any).webkitRequestFullscreen) {
+          // Safari iOS
+          (document.documentElement as any).webkitRequestFullscreen();
+        } else if ((document.documentElement as any).mozRequestFullScreen) {
+          // Firefox
+          (document.documentElement as any).mozRequestFullScreen();
+        } else if ((document.documentElement as any).msRequestFullscreen) {
+          // IE/Edge
+          (document.documentElement as any).msRequestFullscreen();
+        }
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        if (!showSignatureModal && document.fullscreenElement) {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          } else if ((document as any).webkitExitFullscreen) {
+            (document as any).webkitExitFullscreen();
+          } else if ((document as any).mozCancelFullScreen) {
+            (document as any).mozCancelFullScreen();
+          } else if ((document as any).msExitFullscreen) {
+            (document as any).msExitFullscreen();
+          }
+        }
+      };
     }
-    
-    // Exit fullscreen when modal closes
-    return () => {
-      if (!showSignatureModal && document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
-    };
   }, [showSignatureModal]);
 
   // Request fullscreen when PDF viewer opens on mobile
