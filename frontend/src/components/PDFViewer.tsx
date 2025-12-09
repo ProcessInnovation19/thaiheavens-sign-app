@@ -475,7 +475,7 @@ export default function PDFViewer({
           ref={pagesContainerRef}
           className="flex-1 w-full"
           style={{
-            touchAction: readOnly ? 'none' : 'auto', // Disable native touch actions when readOnly to handle manually
+            touchAction: readOnly ? 'pan-x pan-y pinch-zoom' : 'auto', // Allow native scroll when not zoomed, manual when zoomed
             WebkitOverflowScrolling: 'touch',
             height: '100%',
             width: '100%',
@@ -507,7 +507,7 @@ export default function PDFViewer({
         className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
           height: isMobile ? '100dvh' : '70vh', // Full height on mobile when header is hidden
-          touchAction: 'none', // Disable native touch actions to handle manually when zoomed
+          touchAction: 'pan-x pan-y pinch-zoom', // Allow native scroll when not zoomed, manual when zoomed
           WebkitOverflowScrolling: 'touch',
           maxHeight: isMobile ? '100dvh' : '70vh',
           overflow: 'auto',
@@ -519,7 +519,7 @@ export default function PDFViewer({
           ref={pagesContainerRef}
           className="w-full"
           style={readOnly ? {
-            touchAction: 'none', // Disable native touch actions to handle manually when zoomed
+            touchAction: 'pan-x pan-y pinch-zoom', // Allow native scroll when not zoomed, manual when zoomed
             WebkitOverflowScrolling: 'touch',
             overflow: 'auto',
             overflowX: 'auto', // Always allow horizontal scroll
