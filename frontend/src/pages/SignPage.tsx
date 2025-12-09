@@ -300,7 +300,7 @@ export default function SignPage() {
                     Digital Signature
                   </h1>
                   {session.guestName && (
-                    <p className="text-sm text-slate-600 mt-0.5">Hello, {session.guestName}</p>
+                    <p className="text-sm text-slate-600 mt-0.5">Hello, {session.guestName}!</p>
                   )}
                 </div>
               </div>
