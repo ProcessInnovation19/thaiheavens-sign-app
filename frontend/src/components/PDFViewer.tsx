@@ -573,7 +573,7 @@ export default function PDFViewer({
                         style={{
                           position: 'absolute',
                           left: 0,
-                          top: `${(selectedPosition.height * 2) / 3}px`,
+                          top: `${(selectedPosition.height * scaleY * 2) / 3}px`,
                           width: '100%',
                           height: '1px',
                           borderTop: '1px dashed #ef4444',
