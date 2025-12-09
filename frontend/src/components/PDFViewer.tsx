@@ -299,7 +299,7 @@ export default function PDFViewer({
         // Update ref and apply transform IMMEDIATELY - no delays, no RAF
         currentVisualZoomRef.current = clampedZoom;
         container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
-        container.style.transformOrigin = 'top center';
+        container.style.transformOrigin = 'top left'; // Scale from top-left so content expands only right and down
       } else if (isPanningRef.current && panStartRef.current && e.touches.length === 1 && !isPinchingRef.current) {
         // During manual pan (single finger drag when zoomed), handle scroll manually
         // This allows simultaneous vertical and horizontal movement like Google PDF Viewer
@@ -321,7 +321,7 @@ export default function PDFViewer({
           const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
           
           // Calculate scroll limits based on zoom and container dimensions
-          // When using transform: scale(), the content is visually zoomed but container dimensions stay the same
+          // With transformOrigin: 'top left', content expands only right and down (no left expansion)
           const viewportWidth = parentContainer.clientWidth;
           const viewportHeight = parentContainer.clientHeight;
           
@@ -330,18 +330,17 @@ export default function PDFViewer({
           const contentHeight = container.scrollHeight;
           
           // When zoomed, the visual content size is zoom * original size
-          // The scrollable distance in original coordinates is: (visual content - viewport) / zoom
-          // This is because scrollLeft/Top are in original coordinates, not scaled
           const visualContentWidth = contentWidth * zoom;
           const visualContentHeight = contentHeight * zoom;
           
-          // Calculate max scroll in original coordinates
-          // We can scroll until the scaled content edge aligns with viewport edge
-          // Formula: (visualContentSize - viewportSize) / zoom
+          // With transformOrigin: 'top left', content expands only to the right and down
+          // So we can scroll right until the right edge of scaled content aligns with viewport right
+          // And scroll down until the bottom edge of scaled content aligns with viewport bottom
           const maxScrollLeft = Math.max(0, (visualContentWidth - viewportWidth) / zoom);
           const maxScrollTop = Math.max(0, (visualContentHeight - viewportHeight) / zoom);
           
           // Clamp scroll to boundaries (stops at edges like Google PDF Viewer)
+          // Min is 0 (can't scroll left), max is calculated based on scaled content
           newScrollLeft = Math.max(0, Math.min(maxScrollLeft, newScrollLeft));
           newScrollTop = Math.max(0, Math.min(maxScrollTop, newScrollTop));
           
