@@ -315,10 +315,12 @@ export default function PDFViewer({
       e.preventDefault();
       const canvas = pagesRef.current[currentPage - 1].canvas;
       const canvasRect = canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / canvas.width;
+      const scaleY = canvasRect.height / canvas.height;
       
-      // Calculate new position relative to canvas
-      const newX = (e.clientX - canvasRect.left) - dragStart.x;
-      const newY = (e.clientY - canvasRect.top) - dragStart.y;
+      // Calculate new position relative to canvas (in canvas coordinates)
+      const newX = ((e.clientX - canvasRect.left) / scaleX) - dragStart.x;
+      const newY = ((e.clientY - canvasRect.top) / scaleY) - dragStart.y;
       
       // Convert to PDF coordinates and update
       if (onPositionUpdate) {
@@ -362,8 +364,8 @@ export default function PDFViewer({
     
     const handleMouseMove = (e: MouseEvent) => {
       if (!pagesContainerRef.current) return;
-      const rect = pagesContainerRef.current.getBoundingClientRect();
-      const deltaX = e.clientX - rect.left - resizeStart.x;
+      // Calculate delta from initial mouse position
+      const deltaX = e.clientX - resizeStart.x;
       
       // Maintain 2:1 aspect ratio
       const aspectRatio = 2;
