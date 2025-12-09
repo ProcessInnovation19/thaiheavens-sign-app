@@ -44,6 +44,7 @@ export default function PDFViewer({
   const [panStart, setPanStart] = useState<{ x: number; y: number; scrollTop: number } | null>(null);
   const [isPinching, setIsPinching] = useState(false);
   const [pinchStart, setPinchStart] = useState<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
+  const zoomUpdateRef = useRef<number | null>(null);
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -410,10 +411,10 @@ export default function PDFViewer({
         ref={containerRef}
         className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
-          height: isMobile ? 'calc(100dvh - 120px)' : '70vh', // Subtract header height + padding on mobile
+          height: isMobile ? '100dvh' : '70vh', // Full height on mobile when header is hidden
           touchAction: 'pan-y pinch-zoom',
           WebkitOverflowScrolling: 'touch',
-          maxHeight: isMobile ? 'calc(100dvh - 120px)' : '70vh',
+          maxHeight: isMobile ? '100dvh' : '70vh',
         } : {}}
       >
         <div
