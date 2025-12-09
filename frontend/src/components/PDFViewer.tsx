@@ -268,12 +268,27 @@ export default function PDFViewer({
     if (readOnly || selectedPosition) return;
     
     const handleMouseMove = (e: MouseEvent) => {
-      if (!pagesContainerRef.current) return;
-      const rect = pagesContainerRef.current.getBoundingClientRect();
-      setMousePosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
+      if (!pagesContainerRef.current || !pagesRef.current[0]?.canvas) return;
+      const canvas = pagesRef.current[0].canvas;
+      const canvasRect = canvas.getBoundingClientRect();
+      const containerRect = pagesContainerRef.current.getBoundingClientRect();
+      
+      // Check if mouse is over the canvas
+      if (e.clientX >= canvasRect.left && e.clientX <= canvasRect.right &&
+          e.clientY >= canvasRect.top && e.clientY <= canvasRect.bottom) {
+        // Calculate position relative to container
+        const canvasOffsetX = canvasRect.left - containerRect.left;
+        const canvasOffsetY = canvasRect.top - containerRect.top;
+        const mouseXInCanvas = e.clientX - canvasRect.left;
+        const mouseYInCanvas = e.clientY - canvasRect.top;
+        
+        setMousePosition({
+          x: canvasOffsetX + mouseXInCanvas,
+          y: canvasOffsetY + mouseYInCanvas,
+        });
+      } else {
+        setMousePosition(null);
+      }
     };
     
     const container = pagesContainerRef.current;
@@ -285,41 +300,45 @@ export default function PDFViewer({
 
   // Handle drag for signature box
   useEffect(() => {
-    if (!isDragging || !selectedPosition || !dragStart) return;
+    if (!isDragging || !selectedPosition || !dragStart || !pagesRef.current[0]?.canvas) return;
     
     const handleMouseMove = (e: MouseEvent) => {
-      if (!pagesContainerRef.current) return;
-      const rect = pagesContainerRef.current.getBoundingClientRect();
-      const deltaX = e.clientX - rect.left - dragStart.x;
-      const deltaY = e.clientY - rect.top - dragStart.y;
+      e.preventDefault();
+      const canvas = pagesRef.current[0].canvas;
+      const canvasRect = canvas.getBoundingClientRect();
       
-      const newX = selectedPosition.x + deltaX;
-      const newY = selectedPosition.y + deltaY;
+      // Calculate new position relative to canvas
+      const newX = (e.clientX - canvasRect.left) - dragStart.x;
+      const newY = (e.clientY - canvasRect.top) - dragStart.y;
       
       // Convert to PDF coordinates and update
-      if (onPositionUpdate && pagesRef.current[0]) {
-        const pdfCoords = canvasToPdf(1, newX, newY, selectedPosition.width, selectedPosition.height);
+      if (onPositionUpdate) {
+        const pageInfo = pagesRef.current[0];
+        const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
+        const pdfX = newX * pdfScaleRatio;
+        const pdfY = (pageInfo.viewport.height - newY - selectedPosition.height) * pdfScaleRatio;
         
         onPositionUpdate({
           x: newX,
           y: newY,
           width: selectedPosition.width,
           height: selectedPosition.height,
-          pdfX: pdfCoords.x,
-          pdfY: pdfCoords.y,
-          pdfWidth: pdfCoords.width,
-          pdfHeight: pdfCoords.height,
+          pdfX: pdfX,
+          pdfY: pdfY,
+          pdfWidth: selectedPosition.width * pdfScaleRatio,
+          pdfHeight: selectedPosition.height * pdfScaleRatio,
         });
       }
     };
     
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      e.preventDefault();
       setIsDragging(false);
       setDragStart(null);
     };
     
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove, { passive: false });
+    window.addEventListener('mouseup', handleMouseUp, { passive: false });
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
@@ -490,9 +509,9 @@ export default function PDFViewer({
                 {!selectedPosition && mousePosition && (
                   <div
                     style={{
-                      position: 'fixed',
-                      left: `${mousePosition.x + (pagesContainerRef.current?.getBoundingClientRect().left || 0) - 100}px`,
-                      top: `${mousePosition.y + (pagesContainerRef.current?.getBoundingClientRect().top || 0) - 50}px`,
+                      position: 'absolute',
+                      left: `${mousePosition.x - 100}px`,
+                      top: `${mousePosition.y - 50}px`,
                       width: '200px',
                       height: '100px',
                       border: '2px solid #ef4444',
@@ -543,7 +562,7 @@ export default function PDFViewer({
                           top: `${(selectedPosition.height * 2) / 3}px`,
                           width: '100%',
                           height: '1px',
-                          borderTop: '1px dashed rgba(200, 200, 200, 0.5)',
+                          borderTop: '1px dashed #ef4444',
                           pointerEvents: 'none',
                         }}
                       />
