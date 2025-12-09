@@ -209,13 +209,13 @@ export default function PDFViewer({
               const defaultWidth = 200;
               const defaultHeight = 100;
               
-              // Center the box on click position (relative to container, not canvas)
-              const containerRect = pagesContainerRef.current?.getBoundingClientRect();
-              if (containerRect && onPositionUpdate) {
-                const boxX = (e.clientX - containerRect.left) - defaultWidth / 2;
-                const boxY = (e.clientY - containerRect.top) - defaultHeight / 2;
+              // Center the box on click position (relative to canvas position in container)
+              if (onPositionUpdate) {
+                // Calculate box position relative to container (canvas is inside container)
+                const boxX = (e.clientX - rect.left) - defaultWidth / 2;
+                const boxY = (e.clientY - rect.top) - defaultHeight / 2;
                 
-                // Convert to PDF coordinates
+                // Convert to PDF coordinates using canvas coordinates
                 const pdfBoxX = pdfCoords.x - (defaultWidth / scaleX) / 2;
                 const pdfBoxY = pdfCoords.y - (defaultHeight / scaleY) / 2;
                 
@@ -456,7 +456,10 @@ export default function PDFViewer({
           <div
             ref={pagesContainerRef}
             className="w-full relative"
-            style={{ position: 'relative' }}
+            style={{ 
+              position: 'relative',
+              cursor: 'crosshair', // Custom cursor for signature positioning
+            }}
           >
             {/* Pages are rendered here by useEffect */}
             
@@ -506,6 +509,19 @@ export default function PDFViewer({
                       backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     }}
                   >
+                    {/* Guide line at 2/3 height */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: `${(selectedPosition.height * 2) / 3}px`,
+                        width: '100%',
+                        height: '1px',
+                        borderTop: '1px dashed rgba(200, 200, 200, 0.5)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                    
                     {/* Resize handle */}
                     <div
                       ref={resizeHandleRef}
