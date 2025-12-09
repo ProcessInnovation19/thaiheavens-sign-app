@@ -210,14 +210,17 @@ export default function PDFViewer({
   }, [pdfUrl, numPages, zoom, readOnly, selectedPosition, onViewportReady]);
 
   // Improved pinch-to-zoom calculation - zoom out minimum is 1 (fit to width)
+  // More sensitive zoom with smoother increments
   const calculatePinchZoom = useCallback((touch1: React.Touch, touch2: React.Touch, startDistance: number, startZoom: number) => {
     const currentDistance = Math.hypot(
       touch2.clientX - touch1.clientX,
       touch2.clientY - touch1.clientY
     );
-    const scale = currentDistance / startDistance;
+    // More sensitive zoom calculation - multiply by 1.2 for better responsiveness
+    const scale = (currentDistance / startDistance) * 1.2;
     // Minimum zoom is 1 (fit to container width), maximum is 4
-    return Math.max(1, Math.min(4, startZoom * scale));
+    const newZoom = Math.max(1, Math.min(4, startZoom * scale));
+    return newZoom;
   }, []);
 
   // Calculate scroll position to keep pinch center in view
@@ -370,7 +373,7 @@ export default function PDFViewer({
   // Fullscreen mobile mode (Google PDF Reader style)
   if (fullscreen && isMobile) {
     return (
-      <div className="w-full h-full relative flex flex-col bg-slate-50" style={{ height: '100vh', width: '100%', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <div className="w-full h-full relative flex flex-col bg-slate-50" style={{ height: '100dvh', width: '100%', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
         {/* Pages container - Google PDF Reader style */}
         <div
           ref={pagesContainerRef}
@@ -379,6 +382,7 @@ export default function PDFViewer({
             touchAction: readOnly ? 'pan-y pinch-zoom' : 'auto',
             WebkitOverflowScrolling: 'touch',
             height: '100%',
+            maxHeight: '100dvh',
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -398,9 +402,10 @@ export default function PDFViewer({
         ref={containerRef}
         className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto' : 'p-1 sm:p-2'}`}
         style={readOnly ? {
-          height: isMobile ? 'calc(100vh - 80px)' : '70vh', // Subtract header height on mobile
+          height: isMobile ? 'calc(100dvh - 80px)' : '70vh', // Subtract header height on mobile, use dvh for dynamic viewport
           touchAction: 'pan-y pinch-zoom',
           WebkitOverflowScrolling: 'touch',
+          maxHeight: isMobile ? 'calc(100dvh - 80px)' : '70vh',
         } : {}}
       >
         <div
