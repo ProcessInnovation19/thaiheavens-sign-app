@@ -277,8 +277,8 @@ export default function PDFViewer({
     if (readOnly || selectedPosition) return;
     
     const handleMouseMove = (e: MouseEvent) => {
-      if (!pagesContainerRef.current || !pagesRef.current[0]?.canvas) return;
-      const canvas = pagesRef.current[0].canvas;
+      if (!pagesContainerRef.current || !pagesRef.current[currentPage - 1]?.canvas) return;
+      const canvas = pagesRef.current[currentPage - 1].canvas;
       const canvasRect = canvas.getBoundingClientRect();
       const containerRect = pagesContainerRef.current.getBoundingClientRect();
       
@@ -309,11 +309,11 @@ export default function PDFViewer({
 
   // Handle drag for signature box
   useEffect(() => {
-    if (!isDragging || !selectedPosition || !dragStart || !pagesRef.current[0]?.canvas) return;
+    if (!isDragging || !selectedPosition || !dragStart || !pagesRef.current[currentPage - 1]?.canvas) return;
     
     const handleMouseMove = (e: MouseEvent) => {
       e.preventDefault();
-      const canvas = pagesRef.current[0].canvas;
+      const canvas = pagesRef.current[currentPage - 1].canvas;
       const canvasRect = canvas.getBoundingClientRect();
       
       // Calculate new position relative to canvas
@@ -325,8 +325,8 @@ export default function PDFViewer({
         const pageInfo = pagesRef.current[currentPage - 1];
         const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
         const pdfX = newX * pdfScaleRatio;
-        // PDF coordinates have bottom-left origin, so flip Y
-        const pdfY = ((pageInfo.viewport.height - newY - selectedPosition.height) * pdfScaleRatio);
+        // PDF coordinates - use newY directly (like AdminPage does)
+        const pdfY = (newY * pdfScaleRatio);
         
         onPositionUpdate({
           x: newX,
@@ -375,7 +375,8 @@ export default function PDFViewer({
         const pageInfo = pagesRef.current[currentPage - 1];
         const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
         const pdfX = selectedPosition.x * pdfScaleRatio;
-        const pdfY = (pageInfo.viewport.height - selectedPosition.y - newHeight) * pdfScaleRatio;
+        // PDF coordinates - use selectedPosition.y directly (like AdminPage does)
+        const pdfY = (selectedPosition.y * pdfScaleRatio);
         
         onPositionUpdate({
           x: selectedPosition.x,
@@ -577,8 +578,8 @@ export default function PDFViewer({
                   />
                 )}
                 
-                {/* Custom cursor - rectangle */}
-                {!selectedPosition && mousePosition && (
+                {/* Custom cursor - rectangle that follows mouse */}
+                {!selectedPosition && mousePosition && pagesRef.current[currentPage - 1]?.canvas && (
                   <div
                     style={{
                       position: 'absolute',
@@ -589,7 +590,8 @@ export default function PDFViewer({
                       border: '2px solid #ef4444',
                       pointerEvents: 'none',
                       zIndex: 9999,
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      backgroundColor: 'rgba(239, 68, 68, 0.25)',
+                      boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.7)',
                     }}
                   />
                 )}
