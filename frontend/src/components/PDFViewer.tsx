@@ -134,12 +134,12 @@ export default function PDFViewer({
           
           // Render at high quality (qualityScale x finalScale)
           const renderScale = finalScale * qualityScale;
-          const scaledViewport = page.getViewport({ scale: renderScale });
+          const renderViewport = page.getViewport({ scale: renderScale });
           
           // Create canvas for this page - render at high quality
           const canvas = document.createElement('canvas');
-          canvas.width = scaledViewport.width;
-          canvas.height = scaledViewport.height;
+          canvas.width = renderViewport.width;
+          canvas.height = renderViewport.height;
           // Display at final size (with zoom applied)
           canvas.style.width = `${containerWidth * effectiveZoom}px`;
           canvas.style.height = 'auto';
@@ -151,12 +151,8 @@ export default function PDFViewer({
           
           const context = canvas.getContext('2d');
           if (!context) continue;
-          
-          // Scale context for high quality rendering
-          context.scale(qualityScale, qualityScale);
 
           // Render page at high quality
-          const renderViewport = page.getViewport({ scale: finalScale });
           const renderContext = {
             canvasContext: context,
             viewport: renderViewport,
