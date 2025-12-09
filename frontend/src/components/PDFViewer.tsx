@@ -24,7 +24,6 @@ interface PageInfo {
 export default function PDFViewer({
   pdfUrl,
   onPageClick,
-  selectedPage,
   selectedPosition,
   readOnly = false,
   onViewportReady,
