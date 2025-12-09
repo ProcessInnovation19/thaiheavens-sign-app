@@ -296,34 +296,25 @@ export default function PDFViewer({
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       
-      // Calculate zoom directly for immediate response
-      // Use pinchStart.zoom as base to avoid accumulation errors
+      // Calculate zoom directly - NO delays, NO RAF, immediate application
       const baseZoom = pinchStart.zoom;
       const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, baseZoom);
       
       // Clamp zoom between 1 (fit to width) and 4 (max zoom)
       const clampedZoom = Math.max(1, Math.min(4, newZoom));
       
-      // Update ref (no state update = no re-render = maximum smoothness)
+      // Update ref immediately
       currentVisualZoomRef.current = clampedZoom;
       
-      // Apply CSS transform using requestAnimationFrame for ultra-smooth, native-like zoom
-      // This ensures the transform is applied at the optimal time for rendering
-      requestAnimationFrame(() => {
-        const container = pagesContainerRef.current;
-        if (container) {
-          // Apply transform with hardware acceleration hints
-          container.style.transform = `translateZ(0) scale(${clampedZoom})`;
-          container.style.transformOrigin = 'top center';
-          container.style.willChange = 'transform';
-          // Force GPU acceleration
-          container.style.backfaceVisibility = 'hidden';
-          container.style.perspective = '1000px';
-        }
-      });
+      // Apply transform DIRECTLY without requestAnimationFrame for maximum responsiveness
+      // This gives native-like, instant zoom response
+      const container = pagesContainerRef.current;
+      if (container) {
+        // Direct transform application - no delays, no RAF, pure performance
+        container.style.transform = `translate3d(0, 0, 0) scale(${clampedZoom})`;
+      }
       
-      // Don't adjust scroll during pinch - let browser handle it naturally for maximum smoothness
-      // This prevents janky scroll calculations that can cause stuttering
+      // No scroll adjustments, no other calculations - pure zoom performance
     } else if (isPanning && panStart && e.touches.length === 1 && !isPinching) {
       e.preventDefault();
       e.stopPropagation();
@@ -441,8 +432,10 @@ export default function PDFViewer({
             padding: 0,
             willChange: 'transform',
             backfaceVisibility: 'hidden',
-            perspective: '1000px',
-            transform: 'translateZ(0)',
+            WebkitBackfaceVisibility: 'hidden',
+            transform: 'translate3d(0, 0, 0)',
+            WebkitTransform: 'translate3d(0, 0, 0)',
+            contain: 'layout style paint',
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -482,8 +475,10 @@ export default function PDFViewer({
             overflowY: 'auto',
             willChange: 'transform',
             backfaceVisibility: 'hidden',
-            perspective: '1000px',
-            transform: 'translateZ(0)',
+            WebkitBackfaceVisibility: 'hidden',
+            transform: 'translate3d(0, 0, 0)',
+            WebkitTransform: 'translate3d(0, 0, 0)',
+            contain: 'layout style paint',
           } : {}}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
