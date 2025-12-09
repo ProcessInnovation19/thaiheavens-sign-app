@@ -94,7 +94,7 @@ sessionRoutes.get('/session/:token', (req, res) => {
 sessionRoutes.post('/session/:token/sign', async (req, res) => {
   try {
     const { token } = req.params;
-    const { signatureImageBase64 } = req.body;
+    const { signatureImageBase64, x, y, width, height } = req.body;
 
     if (!signatureImageBase64) {
       return res.status(400).json({ error: 'Signature image is required' });
@@ -103,6 +103,15 @@ sessionRoutes.post('/session/:token/sign', async (req, res) => {
     const session = getSessionByToken(token);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Update position if provided (user can reposition the signature box)
+    if (x !== undefined && y !== undefined && width !== undefined && height !== undefined) {
+      session.x = x;
+      session.y = y;
+      session.width = width;
+      session.height = height;
+      saveSession(session);
     }
 
     // Apply signature to PDF

@@ -72,13 +72,25 @@ export async function getSessionByToken(token: string): Promise<SessionPublicInf
   return response.json();
 }
 
-export async function signSession(token: string, signatureImageBase64: string): Promise<{ success: boolean; signedPdfUrl: string; sessionId?: string }> {
+export async function signSession(
+  token: string, 
+  signatureImageBase64: string,
+  position?: { x: number; y: number; width: number; height: number }
+): Promise<{ success: boolean; signedPdfUrl: string; sessionId?: string }> {
+  const body: any = { signatureImageBase64 };
+  if (position) {
+    body.x = position.x;
+    body.y = position.y;
+    body.width = position.width;
+    body.height = position.height;
+  }
+  
   const response = await fetch(`${API_BASE}/session/${token}/sign`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ signatureImageBase64 }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

@@ -52,10 +52,11 @@ export async function applySignatureToPdf(
   const { width: pageWidth, height: pageHeight } = targetPage.getSize();
 
     // Coordinate conversion:
-    // - Frontend sends coordinates with origin at top-left (already centered)
+    // - session.x, session.y, session.width, session.height are in PDF coordinates (scale 1.0)
     // - PDF coordinates have origin at bottom-left
-    // - We need to flip the Y coordinate: pdfY = pageHeight - canvasY - signatureHeight
-    // Note: session.x and session.y are already the top-left corner of the signature box
+    // - session.x and session.y are stored with top-left origin (canvas-style)
+    // - We need to flip the Y coordinate: pdfY = pageHeight - y - height
+    // Note: session.x and session.y are the top-left corner of the signature box in PDF coordinates
     const pdfX = session.x;
     const pdfY = pageHeight - session.y - session.height;
 
