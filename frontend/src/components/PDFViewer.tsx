@@ -228,6 +228,9 @@ export default function PDFViewer({
                 const pdfScaleRatio = 1.0 / displayScale;
                 const pdfWidth = defaultWidth * pdfScaleRatio;
                 const pdfHeight = defaultHeight * pdfScaleRatio;
+                // Convert canvas coordinates to PDF coordinates and center
+                // canvasX and canvasY are in canvas pixel coordinates (at display scale)
+                // Convert to PDF coordinates (scale 1.0) and center the box
                 const pdfBoxX = (canvasX * pdfScaleRatio) - pdfWidth / 2;
                 const pdfBoxY = (canvasY * pdfScaleRatio) - pdfHeight / 2;
                 
