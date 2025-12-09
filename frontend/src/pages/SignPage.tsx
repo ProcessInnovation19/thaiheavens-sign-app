@@ -71,6 +71,24 @@ export default function SignPage() {
     };
   }, [showSignatureModal]);
 
+  // Request fullscreen when PDF viewer opens on mobile
+  useEffect(() => {
+    if (showPdfViewer && typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {
+          // Ignore errors if fullscreen is not available
+        });
+      }
+    }
+    
+    // Exit fullscreen when viewer closes
+    return () => {
+      if (!showPdfViewer && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  }, [showPdfViewer]);
+
   const loadSession = async () => {
     if (!token) return;
 
@@ -559,7 +577,13 @@ export default function SignPage() {
                     <div className="fixed inset-0 z-[200] bg-black flex flex-col">
                       {/* Close button - top left, minimal */}
                       <button
-                        onClick={() => setShowPdfViewer(false)}
+                        onClick={() => {
+                          setShowPdfViewer(false);
+                          // Exit fullscreen if active
+                          if (document.fullscreenElement) {
+                            document.exitFullscreen().catch(() => {});
+                          }
+                        }}
                         className="absolute top-2 left-2 z-50 w-10 h-10 bg-black/70 hover:bg-black/90 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg backdrop-blur-sm"
                         aria-label="Close"
                       >
