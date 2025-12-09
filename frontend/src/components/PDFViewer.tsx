@@ -28,12 +28,15 @@ export default function PDFViewer({
   readOnly = false,
   onViewportReady,
   fullscreen = false,
+  onPositionUpdate,
 }: PDFViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pagesContainerRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<any>(null);
   const pagesRef = useRef<PageInfo[]>([]);
   const renderTasksRef = useRef<any[]>([]);
+  const signatureBoxRef = useRef<HTMLDivElement>(null);
+  const resizeHandleRef = useRef<HTMLDivElement>(null);
   
   const [numPages, setNumPages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -42,6 +45,13 @@ export default function PDFViewer({
   const [zoom] = useState(1);
   // Use refs instead of state for maximum performance - no re-renders during pinch
   // Removed zoom and pan refs - using native scroll only
+
+  // Signature box state
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -119,7 +129,11 @@ export default function PDFViewer({
         const devicePixelRatio = window.devicePixelRatio || 2;
         const qualityScale = Math.max(2, devicePixelRatio); // Minimum 2x quality
         
-        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+        // For signature positioning mode, show only first page
+        // For readOnly mode, show all pages
+        const pagesToRender = readOnly ? numPages : 1;
+        
+        for (let pageNum = 1; pageNum <= pagesToRender; pageNum++) {
           const page = await pdfRef.current.getPage(pageNum);
           const viewport = page.getViewport({ scale: 1 });
           
@@ -143,8 +157,8 @@ export default function PDFViewer({
           canvas.style.display = 'block';
           // Add top margin only to first page, bottom margin to all pages
           canvas.style.marginTop = pageNum === 1 ? '16px' : '0';
-          canvas.style.marginBottom = '24px'; // Increased space between pages
-          canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'; // Elevated shadow effect
+          canvas.style.marginBottom = readOnly ? '24px' : '0'; // Space between pages only in readOnly mode
+          canvas.style.boxShadow = readOnly ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : 'none'; // Elevated shadow only in readOnly
           canvas.style.backgroundColor = '#ffffff';
           canvas.className = 'pdf-page-canvas';
           // Optimize for smooth zooming
@@ -176,7 +190,7 @@ export default function PDFViewer({
           };
           
           heights.push(displayViewport.height);
-          totalHeight += displayViewport.height + 24; // +24 for margin
+          totalHeight += displayViewport.height + (readOnly ? 24 : 0); // +24 for margin only in readOnly
           
           // Append canvas to container
           container.appendChild(canvas);
@@ -190,6 +204,33 @@ export default function PDFViewer({
               const canvasX = (e.clientX - rect.left) * scaleX;
               const canvasY = (e.clientY - rect.top) * scaleY;
               const pdfCoords = canvasToPdf(pageNum, canvasX, canvasY, 0, 0);
+              
+              // Default signature box size (200x100, 2:1 aspect ratio)
+              const defaultWidth = 200;
+              const defaultHeight = 100;
+              
+              // Center the box on click position (relative to container, not canvas)
+              const containerRect = pagesContainerRef.current?.getBoundingClientRect();
+              if (containerRect && onPositionUpdate) {
+                const boxX = (e.clientX - containerRect.left) - defaultWidth / 2;
+                const boxY = (e.clientY - containerRect.top) - defaultHeight / 2;
+                
+                // Convert to PDF coordinates
+                const pdfBoxX = pdfCoords.x - (defaultWidth / scaleX) / 2;
+                const pdfBoxY = pdfCoords.y - (defaultHeight / scaleY) / 2;
+                
+                onPositionUpdate({
+                  x: boxX,
+                  y: boxY,
+                  width: defaultWidth,
+                  height: defaultHeight,
+                  pdfX: pdfBoxX,
+                  pdfY: pdfBoxY,
+                  pdfWidth: defaultWidth / scaleX,
+                  pdfHeight: defaultHeight / scaleY,
+                });
+              }
+              
               onPageClick(pageNum, canvasX, canvasY, pdfCoords.x, pdfCoords.y);
             });
           }
@@ -210,7 +251,7 @@ export default function PDFViewer({
     };
 
     renderAllPages();
-  }, [pdfUrl, numPages, readOnly, selectedPosition, onViewportReady]);
+  }, [pdfUrl, numPages, readOnly, onViewportReady]);
   // NOTE: Removed 'zoom' from dependencies to prevent re-render during pinch
   // Zoom is now handled purely with CSS transform for smooth experience
 
@@ -218,59 +259,114 @@ export default function PDFViewer({
 
   // Removed all touch event handlers - using native scroll only
 
-  // Draw red rectangle for signature position
+  // Handle mouse move for signature box preview (follows cursor)
   useEffect(() => {
-    if (!selectedPosition || readOnly) return;
-    if (!pdfRef.current || pagesRef.current.length === 0) return;
+    if (readOnly || selectedPosition) return;
     
-    // Wait a bit for pages to be fully rendered
-    const timeout = setTimeout(() => {
-      // Find the canvas for the page with the signature position (assuming first page for now)
-      const pageIndex = 0;
-      const pageInfo = pagesRef.current[pageIndex];
-      if (!pageInfo || !pageInfo.canvas || !pageInfo.page || !pageInfo.rendered) return;
-      
-      const canvas = pageInfo.canvas;
-      const context = canvas.getContext('2d');
-      if (!context) return;
-      
-      // Get the PDF coordinates and convert to canvas coordinates
-      const pdfViewport = pageInfo.page.getViewport({ scale: 1 });
-      const scaleFactor = pageInfo.viewport.width / pdfViewport.width;
-      
-      // Convert PDF coordinates to canvas coordinates
-      // Use canvas coordinates if PDF coordinates are not available
-      const canvasX = selectedPosition.pdfX !== undefined ? selectedPosition.pdfX * scaleFactor : selectedPosition.x;
-      const canvasY = selectedPosition.pdfY !== undefined ? selectedPosition.pdfY * scaleFactor : selectedPosition.y;
-      const canvasWidth = selectedPosition.pdfWidth !== undefined ? selectedPosition.pdfWidth * scaleFactor : selectedPosition.width;
-      const canvasHeight = selectedPosition.pdfHeight !== undefined ? selectedPosition.pdfHeight * scaleFactor : selectedPosition.height;
-      
-      // Account for the render scale (canvas is rendered at higher resolution)
-      const renderScale = canvas.width / pageInfo.viewport.width;
-      const renderX = canvasX * renderScale;
-      const renderY = canvasY * renderScale;
-      const renderWidth = canvasWidth * renderScale;
-      const renderHeight = canvasHeight * renderScale;
-      
-      // Redraw the page to clear previous rectangle
-      const renderViewport = pageInfo.page.getViewport({ scale: pageInfo.viewport.scale * (canvas.width / pageInfo.viewport.width) });
-      const renderContext = {
-        canvasContext: context,
-        viewport: renderViewport,
-      };
-      
-      // Re-render the page
-      pageInfo.page.render(renderContext).promise.then(() => {
-        // Draw red rectangle
-        context.strokeStyle = '#ef4444'; // red-500
-        context.lineWidth = 3 * renderScale;
-        context.setLineDash([]);
-        context.strokeRect(renderX, renderY, renderWidth, renderHeight);
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!pagesContainerRef.current) return;
+      const rect = pagesContainerRef.current.getBoundingClientRect();
+      setMousePosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
       });
-    }, 200);
+    };
     
-    return () => clearTimeout(timeout);
-  }, [selectedPosition, readOnly, numPages, pagesRef.current.length]);
+    const container = pagesContainerRef.current;
+    if (container) {
+      container.addEventListener('mousemove', handleMouseMove);
+      return () => container.removeEventListener('mousemove', handleMouseMove);
+    }
+  }, [readOnly, selectedPosition]);
+
+  // Handle drag for signature box
+  useEffect(() => {
+    if (!isDragging || !selectedPosition || !dragStart) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!pagesContainerRef.current) return;
+      const rect = pagesContainerRef.current.getBoundingClientRect();
+      const deltaX = e.clientX - rect.left - dragStart.x;
+      const deltaY = e.clientY - rect.top - dragStart.y;
+      
+      const newX = selectedPosition.x + deltaX;
+      const newY = selectedPosition.y + deltaY;
+      
+      // Convert to PDF coordinates and update
+      if (onPositionUpdate && pagesRef.current[0]) {
+        const pdfCoords = canvasToPdf(1, newX, newY, selectedPosition.width, selectedPosition.height);
+        
+        onPositionUpdate({
+          x: newX,
+          y: newY,
+          width: selectedPosition.width,
+          height: selectedPosition.height,
+          pdfX: pdfCoords.x,
+          pdfY: pdfCoords.y,
+          pdfWidth: pdfCoords.width,
+          pdfHeight: pdfCoords.height,
+        });
+      }
+    };
+    
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setDragStart(null);
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, selectedPosition, dragStart, onPositionUpdate]);
+
+  // Handle resize for signature box
+  useEffect(() => {
+    if (!isResizing || !selectedPosition || !resizeStart) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!pagesContainerRef.current) return;
+      const rect = pagesContainerRef.current.getBoundingClientRect();
+      const deltaX = e.clientX - rect.left - resizeStart.x;
+      
+      // Maintain 2:1 aspect ratio
+      const aspectRatio = 2;
+      const newWidth = Math.max(100, resizeStart.width + deltaX);
+      const newHeight = newWidth / aspectRatio;
+      
+      // Convert to PDF coordinates and update
+      if (onPositionUpdate && pagesRef.current[0]) {
+        const pdfCoords = canvasToPdf(1, selectedPosition.x, selectedPosition.y, newWidth, newHeight);
+        
+        onPositionUpdate({
+          x: selectedPosition.x,
+          y: selectedPosition.y,
+          width: newWidth,
+          height: newHeight,
+          pdfX: pdfCoords.x,
+          pdfY: pdfCoords.y,
+          pdfWidth: pdfCoords.width,
+          pdfHeight: pdfCoords.height,
+        });
+      }
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      setResizeStart(null);
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, selectedPosition, resizeStart, onPositionUpdate]);
 
   // Convert canvas coordinates to PDF coordinates (for signature positioning)
   const canvasToPdf = (pageNum: number, canvasX: number, canvasY: number, canvasWidth: number, canvasHeight: number) => {
@@ -308,8 +404,8 @@ export default function PDFViewer({
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  // Fullscreen mobile mode (Google PDF Reader style)
-  if (fullscreen && isMobile) {
+  // Fullscreen mobile mode (Google PDF Reader style) - only for readOnly
+  if (fullscreen && isMobile && readOnly) {
     return (
       <div 
         className="w-full h-full relative flex flex-col bg-slate-50" 
@@ -325,7 +421,7 @@ export default function PDFViewer({
           ref={pagesContainerRef}
           className="flex-1 w-full"
           style={{
-            touchAction: readOnly ? 'pan-x pan-y pinch-zoom' : 'auto',
+            touchAction: 'pan-x pan-y pinch-zoom',
             WebkitOverflowScrolling: 'touch',
             height: '100%',
             width: '100%',
@@ -348,27 +444,130 @@ export default function PDFViewer({
     );
   }
 
-  // Desktop/normal mode
+  // Desktop/normal mode - signature positioning mode (not readOnly)
+  if (!readOnly) {
+    return (
+      <div className="w-full relative">
+        {/* Pages container - one page at a time for signature positioning */}
+        <div
+          ref={containerRef}
+          className="flex flex-col items-center p-1 sm:p-2"
+        >
+          <div
+            ref={pagesContainerRef}
+            className="w-full relative"
+            style={{ position: 'relative' }}
+          >
+            {/* Pages are rendered here by useEffect */}
+            
+            {/* Signature box overlay */}
+            {pagesContainerRef.current && (
+              <>
+                {/* Preview box that follows cursor */}
+                {!selectedPosition && mousePosition && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${mousePosition.x - 100}px`,
+                      top: `${mousePosition.y - 50}px`,
+                      width: '200px',
+                      height: '100px',
+                      border: '2px dashed #ef4444',
+                      pointerEvents: 'none',
+                      zIndex: 10,
+                    }}
+                  />
+                )}
+                
+                {/* Fixed box after click */}
+                {selectedPosition && (
+                  <div
+                    ref={signatureBoxRef}
+                    onMouseDown={(e) => {
+                      if (e.target === resizeHandleRef.current) return;
+                      setIsDragging(true);
+                      if (pagesContainerRef.current) {
+                        const rect = pagesContainerRef.current.getBoundingClientRect();
+                        setDragStart({
+                          x: e.clientX - rect.left - selectedPosition.x,
+                          y: e.clientY - rect.top - selectedPosition.y,
+                        });
+                      }
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: `${selectedPosition.x}px`,
+                      top: `${selectedPosition.y}px`,
+                      width: `${selectedPosition.width}px`,
+                      height: `${selectedPosition.height}px`,
+                      border: '2px solid #ef4444',
+                      cursor: isDragging ? 'grabbing' : 'move',
+                      zIndex: 10,
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    }}
+                  >
+                    {/* Resize handle */}
+                    <div
+                      ref={resizeHandleRef}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setIsResizing(true);
+                        setResizeStart({
+                          x: e.clientX,
+                          y: e.clientY,
+                          width: selectedPosition.width,
+                          height: selectedPosition.height,
+                        });
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: '-5px',
+                        bottom: '-5px',
+                        width: '10px',
+                        height: '10px',
+                        backgroundColor: '#ef4444',
+                        cursor: 'nwse-resize',
+                        border: '2px solid white',
+                        borderRadius: '2px',
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        
+        {!readOnly && (
+          <p className="text-center text-slate-600 text-sm mt-4 font-medium">
+            👆 Click on the PDF to select where the signature should appear
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop/normal mode - readOnly (viewer mode)
   return (
     <div className="w-full relative">
       {/* Pages container - Google PDF Reader style: all pages vertical */}
       <div
         ref={containerRef}
-        className={`flex flex-col items-center ${readOnly ? 'bg-slate-50 rounded-lg border border-slate-200' : 'p-1 sm:p-2'}`}
-        style={readOnly ? {
-          height: isMobile ? '100dvh' : '70vh', // Full height on mobile when header is hidden
+        className="flex flex-col items-center bg-slate-50 rounded-lg border border-slate-200"
+        style={{
+          height: isMobile ? '100dvh' : '70vh',
           touchAction: 'pan-x pan-y pinch-zoom',
           WebkitOverflowScrolling: 'touch',
           maxHeight: isMobile ? '100dvh' : '70vh',
           overflow: 'auto',
           overflowX: 'auto',
           overflowY: 'auto',
-        } : {}}
+        }}
       >
         <div
           ref={pagesContainerRef}
           className="w-full"
-          style={readOnly ? {
+          style={{
             touchAction: 'pan-x pan-y pinch-zoom',
             WebkitOverflowScrolling: 'touch',
             overflow: 'auto',
@@ -380,17 +579,12 @@ export default function PDFViewer({
             transform: 'none',
             WebkitTransform: 'none',
             contain: 'layout style paint',
-          } : {}}
+          }}
         >
           {/* Pages are rendered here by useEffect */}
         </div>
       </div>
       
-      {!readOnly && (
-        <p className="text-center text-slate-600 text-sm mt-4 font-medium">
-          👆 Click on the PDF to select where the signature should appear
-        </p>
-      )}
     </div>
   );
 }
