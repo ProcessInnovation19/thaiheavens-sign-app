@@ -504,69 +504,75 @@ export default function PDFViewer({
                 )}
                 
                 {/* Fixed box after click */}
-                {selectedPosition && pagesRef.current[0]?.canvas && (
-                  <div
-                    ref={signatureBoxRef}
-                    onMouseDown={(e) => {
-                      if (e.target === resizeHandleRef.current) return;
-                      setIsDragging(true);
-                      const canvas = pagesRef.current[0].canvas;
-                      const canvasRect = canvas.getBoundingClientRect();
-                      setDragStart({
-                        x: e.clientX - canvasRect.left - selectedPosition.x,
-                        y: e.clientY - canvasRect.top - selectedPosition.y,
-                      });
-                    }}
-                    style={{
-                      position: 'absolute',
-                      left: `${pagesRef.current[0].canvas.getBoundingClientRect().left - (pagesContainerRef.current?.getBoundingClientRect().left || 0) + selectedPosition.x}px`,
-                      top: `${pagesRef.current[0].canvas.getBoundingClientRect().top - (pagesContainerRef.current?.getBoundingClientRect().top || 0) + selectedPosition.y}px`,
-                      width: `${selectedPosition.width}px`,
-                      height: `${selectedPosition.height}px`,
-                      border: '2px solid #ef4444',
-                      cursor: isDragging ? 'grabbing' : 'move',
-                      zIndex: 10,
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    }}
-                  >
-                    {/* Guide line at 2/3 height */}
+                {selectedPosition && pagesRef.current[0]?.canvas && (() => {
+                  const canvas = pagesRef.current[0].canvas;
+                  const canvasRect = canvas.getBoundingClientRect();
+                  const containerRect = pagesContainerRef.current?.getBoundingClientRect();
+                  const canvasOffsetX = containerRect ? canvasRect.left - containerRect.left : 0;
+                  const canvasOffsetY = containerRect ? canvasRect.top - containerRect.top : 0;
+                  
+                  return (
                     <div
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: `${(selectedPosition.height * 2) / 3}px`,
-                        width: '100%',
-                        height: '1px',
-                        borderTop: '1px dashed rgba(200, 200, 200, 0.5)',
-                        pointerEvents: 'none',
-                      }}
-                    />
-                    
-                    {/* Resize handle */}
-                    <div
-                      ref={resizeHandleRef}
+                      ref={signatureBoxRef}
                       onMouseDown={(e) => {
-                        e.stopPropagation();
-                        setIsResizing(true);
-                        setResizeStart({
-                          x: e.clientX,
-                          y: e.clientY,
-                          width: selectedPosition.width,
-                          height: selectedPosition.height,
+                        if (e.target === resizeHandleRef.current) return;
+                        setIsDragging(true);
+                        const canvasRect = canvas.getBoundingClientRect();
+                        setDragStart({
+                          x: e.clientX - canvasRect.left - selectedPosition.x,
+                          y: e.clientY - canvasRect.top - selectedPosition.y,
                         });
                       }}
                       style={{
                         position: 'absolute',
-                        right: '-5px',
-                        bottom: '-5px',
-                        width: '10px',
-                        height: '10px',
-                        backgroundColor: '#ef4444',
-                        cursor: 'nwse-resize',
-                        border: '2px solid white',
-                        borderRadius: '2px',
+                        left: `${canvasOffsetX + selectedPosition.x}px`,
+                        top: `${canvasOffsetY + selectedPosition.y}px`,
+                        width: `${selectedPosition.width}px`,
+                        height: `${selectedPosition.height}px`,
+                        border: '2px solid #ef4444',
+                        cursor: isDragging ? 'grabbing' : 'move',
+                        zIndex: 10,
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
                       }}
-                    />
+                    >
+                      {/* Guide line at 2/3 height */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: `${(selectedPosition.height * 2) / 3}px`,
+                          width: '100%',
+                          height: '1px',
+                          borderTop: '1px dashed rgba(200, 200, 200, 0.5)',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                      
+                      {/* Resize handle */}
+                      <div
+                        ref={resizeHandleRef}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          setIsResizing(true);
+                          setResizeStart({
+                            x: e.clientX,
+                            y: e.clientY,
+                            width: selectedPosition.width,
+                            height: selectedPosition.height,
+                          });
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '-5px',
+                          bottom: '-5px',
+                          width: '10px',
+                          height: '10px',
+                          backgroundColor: '#ef4444',
+                          cursor: 'nwse-resize',
+                          border: '2px solid white',
+                          borderRadius: '2px',
+                        }}
+                      />
                     </div>
                   );
                 })()}
