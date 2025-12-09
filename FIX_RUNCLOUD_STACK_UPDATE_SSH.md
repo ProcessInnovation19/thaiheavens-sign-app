@@ -55,11 +55,14 @@ sudo cp /etc/nginx-rc/conf.d/thaiheavens-sign-app.d/main.conf /etc/nginx-rc/conf
 sudo nano /etc/nginx-rc/conf.d/thaiheavens-sign-app.d/main.conf
 ```
 
-**Assicurati che il file contenga almeno queste location blocks:**
+**Assicurati che il file contenga almeno queste location blocks CON gli header no-cache:**
 
 ```nginx
 # Proxy per API
 location /api {
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
     proxy_pass http://localhost:5000;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -73,16 +76,24 @@ location /api {
 
 # Serve frontend static files
 location / {
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
     root /home/fabrizio/webapps/thaiheavens-sign-app/frontend/dist;
     try_files $uri $uri/ /index.html;
 }
 
 # Serve docs
 location /docs {
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
     alias /home/fabrizio/webapps/thaiheavens-sign-app/docs-site/.vitepress/dist;
     try_files $uri $uri/ /docs/index.html;
 }
 ```
+
+**IMPORTANTE:** Le 3 righe degli header no-cache (`add_header Cache-Control`, `add_header Pragma`, `add_header Expires`) devono essere presenti in OGNI location block per disabilitare la cache e vedere gli aggiornamenti immediatamente.
 
 **Salva il file:**
 - Premi `Ctrl + O` per salvare
@@ -186,6 +197,7 @@ pm2 restart thaiheavens-backend
 ## Checklist Rapida
 
 - [ ] File `main.conf` contiene le location blocks per `/api`, `/`, e `/docs`
+- [ ] **OGNI location block ha le 3 righe degli header no-cache** (`add_header Cache-Control`, `add_header Pragma`, `add_header Expires`)
 - [ ] Public Path in RunCloud è corretto: `/home/fabrizio/webapps/thaiheavens-sign-app`
 - [ ] Test Nginx passa: `sudo /usr/local/sbin/nginx-rc -t` → "syntax is ok"
 - [ ] Nginx ricaricato: `sudo /usr/local/sbin/nginx-rc -s reload`
@@ -202,4 +214,5 @@ pm2 restart thaiheavens-backend
 **Per evitare problemi futuri:**
 - Fai sempre un backup dei file prima di fare UPDATE: `sudo cp main.conf main.conf.backup`
 - Considera di usare i file extra invece del main.conf (RunCloud li modifica meno spesso)
+
 
