@@ -41,11 +41,7 @@ export default function PDFViewer({
   // Zoom and pan for readOnly mode - start at 1 (fit to width)
   const [zoom] = useState(1);
   // Use refs instead of state for maximum performance - no re-renders during pinch
-  const isPanningRef = useRef(false);
-  const panStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
-  const isPinchingRef = useRef(false);
-  const pinchStartRef = useRef<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number; scrollLeft: number } | null>(null);
-  const currentVisualZoomRef = useRef<number>(1); // Track visual zoom without state updates
+  // Removed zoom and pan refs - using native scroll only
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -534,8 +530,8 @@ export default function PDFViewer({
             willChange: 'transform',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
-            transform: 'translate3d(0, 0, 0)',
-            WebkitTransform: 'translate3d(0, 0, 0)',
+            transform: 'none',
+            WebkitTransform: 'none',
             contain: 'layout style paint',
           }}
         >
@@ -574,8 +570,8 @@ export default function PDFViewer({
             willChange: 'transform',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
-            transform: 'translate3d(0, 0, 0)',
-            WebkitTransform: 'translate3d(0, 0, 0)',
+            transform: 'none',
+            WebkitTransform: 'none',
             contain: 'layout style paint',
           } : {}}
         >
