@@ -199,6 +199,7 @@ export default function PDFViewer({
           if (!readOnly && onPageClick) {
             canvas.addEventListener('click', (e) => {
               const rect = canvas.getBoundingClientRect();
+              const containerRect = container.getBoundingClientRect();
               const scaleX = canvas.width / rect.width;
               const scaleY = canvas.height / rect.height;
               const canvasX = (e.clientX - rect.left) * scaleX;
@@ -209,11 +210,17 @@ export default function PDFViewer({
               const defaultWidth = 200;
               const defaultHeight = 100;
               
-              // Center the box on click position (relative to canvas position in container)
+              // Center the box on click position (relative to container)
               if (onPositionUpdate) {
-                // Calculate box position relative to container (canvas is inside container)
-                const boxX = (e.clientX - rect.left) - defaultWidth / 2;
-                const boxY = (e.clientY - rect.top) - defaultHeight / 2;
+                // Calculate box position relative to container
+                // Need to account for canvas position within container
+                const canvasOffsetX = rect.left - containerRect.left;
+                const canvasOffsetY = rect.top - containerRect.top;
+                const clickXInContainer = (e.clientX - rect.left) + canvasOffsetX;
+                const clickYInContainer = (e.clientY - rect.top) + canvasOffsetY;
+                
+                const boxX = clickXInContainer - defaultWidth / 2;
+                const boxY = clickYInContainer - defaultHeight / 2;
                 
                 // Convert to PDF coordinates using canvas coordinates
                 const pdfBoxX = pdfCoords.x - (defaultWidth / scaleX) / 2;
