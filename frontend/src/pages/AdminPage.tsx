@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import PDFViewer from '../components/PDFViewer';
 import { uploadPdf, createSession, getAllSessions, downloadSignedPdf, deleteSession, sendEmail } from '../services/api';
 import { SigningSession } from '../types';
-import buildInfo from '../build-info.json';
 
 type Step = 'sessions' | 'upload' | 'position' | 'create';
 
@@ -22,6 +21,7 @@ export default function AdminPage() {
     pdfHeight?: number;
   } | null>(null);
   const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -281,6 +281,7 @@ export default function AdminPage() {
     setPdfUrl(null);
     setSelectedPosition(null);
     setGuestName('');
+    setGuestEmail('');
     setPublicUrl(null);
     setError(null);
     setEmailSent(false);
@@ -295,17 +296,16 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src={`${typeof window !== 'undefined' ? window.location.origin : ''}/images/logo.png?v=${buildInfo.timestamp}`}
+                src="/images/logo.png" 
                 alt="Thai Heavens" 
                 className="h-20 w-auto object-contain"
                 style={{ maxHeight: '80px' }}
-                key={`logo-${buildInfo.timestamp}`}
                 onError={(e) => {
                   // Try fallback URL if local file doesn't exist
                   const img = e.target as HTMLImageElement;
                   const currentSrc = img.src;
                   if (!currentSrc.includes('thaiheavens.com')) {
-                    img.src = `https://thaiheavens.com/logo.png?v=${buildInfo.timestamp}`;
+                    img.src = 'https://thaiheavens.com/logo.png';
                   } else {
                     img.style.display = 'none';
                   }

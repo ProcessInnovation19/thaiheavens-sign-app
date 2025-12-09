@@ -45,6 +45,8 @@ export default function PDFViewer({
   const [isPinching, setIsPinching] = useState(false);
   const [pinchStart, setPinchStart] = useState<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
   const zoomUpdateRef = useRef<number | null>(null);
+  const lastZoomUpdateRef = useRef<number>(0);
+  const zoomThrottleMs = 16; // ~60fps
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -151,6 +153,9 @@ export default function PDFViewer({
           canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'; // Elevated shadow effect
           canvas.style.backgroundColor = '#ffffff';
           canvas.className = 'pdf-page-canvas';
+          // Optimize for smooth zooming
+          canvas.style.willChange = 'transform';
+          canvas.style.imageRendering = 'high-quality';
           
           const context = canvas.getContext('2d');
           if (!context) continue;
@@ -284,42 +289,44 @@ export default function PDFViewer({
     
     if (isPinching && pinchStart && e.touches.length === 2) {
       e.preventDefault();
+      e.stopPropagation();
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       
-      // Use requestAnimationFrame for smooth zoom updates
-      if (zoomUpdateRef.current !== null) {
-        cancelAnimationFrame(zoomUpdateRef.current);
+      // Throttle zoom updates for smooth performance (~60fps)
+      const now = Date.now();
+      if (now - lastZoomUpdateRef.current < zoomThrottleMs) {
+        return;
       }
+      lastZoomUpdateRef.current = now;
       
-      zoomUpdateRef.current = requestAnimationFrame(() => {
-        // Use pinchStart.zoom as base to avoid accumulation errors
-        // This ensures smooth zooming from the initial pinch point
-        const baseZoom = pinchStart.zoom;
-        const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, baseZoom);
-        
-        // Clamp zoom between 1 (fit to width) and 4 (max zoom)
-        const clampedZoom = Math.max(1, Math.min(4, newZoom));
-        setZoom(clampedZoom);
-        
-        // Adjust scroll to keep pinch center in view
-        const container = pagesContainerRef.current;
-        if (container) {
-          const rect = container.getBoundingClientRect();
-          const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
-          const newScrollTop = calculateScrollForZoom(
-            { x: 0, y: centerY + pinchStart.scrollTop },
-            baseZoom,
-            clampedZoom,
-            pinchStart.scrollTop
-          );
-          container.scrollTop = newScrollTop;
-        }
-        
-        zoomUpdateRef.current = null;
-      });
+      // Calculate zoom directly for immediate response
+      // Use pinchStart.zoom as base to avoid accumulation errors
+      const baseZoom = pinchStart.zoom;
+      const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, baseZoom);
+      
+      // Clamp zoom between 1 (fit to width) and 4 (max zoom)
+      const clampedZoom = Math.max(1, Math.min(4, newZoom));
+      
+      // Update zoom state for smooth visual feedback
+      setZoom(clampedZoom);
+      
+      // Adjust scroll to keep pinch center in view
+      const container = pagesContainerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+        const newScrollTop = calculateScrollForZoom(
+          { x: 0, y: centerY + pinchStart.scrollTop },
+          baseZoom,
+          clampedZoom,
+          pinchStart.scrollTop
+        );
+        container.scrollTop = newScrollTop;
+      }
     } else if (isPanning && panStart && e.touches.length === 1 && !isPinching) {
       e.preventDefault();
+      e.stopPropagation();
       const container = pagesContainerRef.current;
       if (container) {
         const deltaY = panStart.y - e.touches[0].clientY;
@@ -331,10 +338,12 @@ export default function PDFViewer({
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!readOnly) return;
     
-    // Cancel any pending zoom updates
-    if (zoomUpdateRef.current !== null) {
-      cancelAnimationFrame(zoomUpdateRef.current);
-      zoomUpdateRef.current = null;
+    // Update pinchStart.zoom to current zoom to prevent accumulation on next pinch
+    if (isPinching && pinchStart) {
+      setPinchStart({
+        ...pinchStart,
+        zoom: zoom, // Update to current zoom value
+      });
     }
     
     if (e.touches.length === 0) {

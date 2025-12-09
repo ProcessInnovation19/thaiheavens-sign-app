@@ -12,3 +12,4 @@ writeFileSync(outputPath, JSON.stringify(buildInfo, null, 2));
 
 console.log('Build info generated:', buildInfo);
 
+

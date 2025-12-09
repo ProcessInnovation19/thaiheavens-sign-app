@@ -129,3 +129,4 @@ location /api {
 
 Se hai fatto modifiche sia nel file principale che nella extra config, **rimuovi i duplicati** per evitare conflitti. È meglio avere tutto in un solo posto (consiglio il file principale).
 
+

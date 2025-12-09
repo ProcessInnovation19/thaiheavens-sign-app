@@ -236,7 +236,11 @@ export default function SignPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header - Hide when signature modal or PDF viewer is open on mobile */}
-      {!(showSignatureModal && typeof window !== 'undefined' && window.innerWidth < 768) && !(showPdfViewer && typeof window !== 'undefined' && window.innerWidth < 768) && (
+      {(() => {
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        const shouldHideHeader = isMobile && (showSignatureModal || showPdfViewer);
+        return !shouldHideHeader;
+      })() && (
         <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 sticky top-0 z-50 shadow-sm">
           <div className="container mx-auto px-4 py-4 max-w-4xl">
             <div className="flex items-center justify-between">
