@@ -438,14 +438,7 @@ export default function PDFViewer({
       } else if (e.touches.length === 1 && isPinchingRef.current) {
         // Switched from pinch (2 fingers) to single finger - start manual pan immediately
         isPinchingRef.current = false;
-        const parentContainer = container.parentElement;
-        if (parentContainer) {
-          // Always activate pan when zoomed (zoom > 1)
-          const currentZoom = currentVisualZoomRef.current;
-          const transformMatch = container.style.transform.match(/scale\(([\d.]+)\)/);
-          const zoom = transformMatch ? parseFloat(transformMatch[1]) : currentZoom;
-          
-          // Always activate pan when switching from pinch to single finger
+        // Always activate pan when switching from pinch to single finger
         isPanningRef.current = true;
         panStartRef.current = {
           x: e.touches[0].clientX,
@@ -453,7 +446,6 @@ export default function PDFViewer({
           translateX: currentTranslateXRef.current,
           translateY: currentTranslateYRef.current,
         };
-        }
       }
     };
 
