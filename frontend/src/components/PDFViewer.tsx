@@ -40,14 +40,14 @@ export default function PDFViewer({
   const [error, setError] = useState<string | null>(null);
   // Zoom and pan for readOnly mode - start at 1 (fit to width)
   const [zoom, setZoom] = useState(1);
-  const [visualZoom, setVisualZoom] = useState(1); // Visual zoom for smooth CSS transform during pinch
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number; scrollTop: number } | null>(null);
   const [isPinching, setIsPinching] = useState(false);
   const [pinchStart, setPinchStart] = useState<{ distance: number; zoom: number; center: { x: number; y: number }; scrollTop: number } | null>(null);
+  const currentVisualZoomRef = useRef<number>(1); // Track visual zoom without state updates
   const zoomUpdateRef = useRef<number | null>(null);
   const lastZoomUpdateRef = useRef<number>(0);
-  const zoomThrottleMs = 8; // ~120fps for smoother zoom
+  const zoomThrottleMs = 0; // No throttling - maximum smoothness
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -295,14 +295,7 @@ export default function PDFViewer({
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       
-      // Throttle zoom updates for smooth performance (~120fps)
-      const now = Date.now();
-      if (now - lastZoomUpdateRef.current < zoomThrottleMs) {
-        return;
-      }
-      lastZoomUpdateRef.current = now;
-      
-      // Calculate zoom directly for immediate response
+      // Calculate zoom directly for immediate response - NO throttling for maximum smoothness
       // Use pinchStart.zoom as base to avoid accumulation errors
       const baseZoom = pinchStart.zoom;
       const newZoom = calculatePinchZoom(touch1, touch2, pinchStart.distance, baseZoom);
@@ -310,31 +303,39 @@ export default function PDFViewer({
       // Clamp zoom between 1 (fit to width) and 4 (max zoom)
       const clampedZoom = Math.max(1, Math.min(4, newZoom));
       
-      // Update visual zoom immediately with CSS transform (no re-render)
-      setVisualZoom(clampedZoom);
+      // Update ref (no state update = no re-render = maximum smoothness)
+      currentVisualZoomRef.current = clampedZoom;
       
       // Apply CSS transform directly to all canvas elements for instant feedback
-      const container = pagesContainerRef.current;
-      if (container) {
-        const canvases = container.querySelectorAll('.pdf-page-canvas');
-        const zoomRatio = clampedZoom / pinchStart.zoom; // Ratio from pinch start zoom
-        canvases.forEach((canvas) => {
-          const htmlCanvas = canvas as HTMLCanvasElement;
-          htmlCanvas.style.transform = `scale(${zoomRatio})`;
-          htmlCanvas.style.transformOrigin = 'top center';
-        });
-        
-        // Adjust scroll to keep pinch center in view
-        const rect = container.getBoundingClientRect();
-        const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
-        const newScrollTop = calculateScrollForZoom(
-          { x: 0, y: centerY + pinchStart.scrollTop },
-          baseZoom,
-          clampedZoom,
-          pinchStart.scrollTop
-        );
-        container.scrollTop = newScrollTop;
+      // Use requestAnimationFrame for smooth rendering
+      if (zoomUpdateRef.current !== null) {
+        cancelAnimationFrame(zoomUpdateRef.current);
       }
+      
+      zoomUpdateRef.current = requestAnimationFrame(() => {
+        const container = pagesContainerRef.current;
+        if (container) {
+          const canvases = container.querySelectorAll('.pdf-page-canvas');
+          const zoomRatio = clampedZoom / pinchStart.zoom; // Ratio from pinch start zoom
+          canvases.forEach((canvas) => {
+            const htmlCanvas = canvas as HTMLCanvasElement;
+            htmlCanvas.style.transform = `scale(${zoomRatio})`;
+            htmlCanvas.style.transformOrigin = 'top center';
+          });
+          
+          // Adjust scroll to keep pinch center in view
+          const rect = container.getBoundingClientRect();
+          const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+          const newScrollTop = calculateScrollForZoom(
+            { x: 0, y: centerY + pinchStart.scrollTop },
+            baseZoom,
+            clampedZoom,
+            pinchStart.scrollTop
+          );
+          container.scrollTop = newScrollTop;
+        }
+        zoomUpdateRef.current = null;
+      });
     } else if (isPanning && panStart && e.touches.length === 1 && !isPinching) {
       e.preventDefault();
       e.stopPropagation();
@@ -349,8 +350,16 @@ export default function PDFViewer({
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!readOnly) return;
     
+    // Cancel any pending animation frame
+    if (zoomUpdateRef.current !== null) {
+      cancelAnimationFrame(zoomUpdateRef.current);
+      zoomUpdateRef.current = null;
+    }
+    
     // When pinch ends, commit visual zoom to actual zoom (triggers re-render with proper scale)
     if (isPinching && pinchStart) {
+      const finalZoom = currentVisualZoomRef.current;
+      
       // Remove CSS transforms and update actual zoom state
       const container = pagesContainerRef.current;
       if (container) {
@@ -363,12 +372,12 @@ export default function PDFViewer({
       }
       
       // Update actual zoom state (this will trigger re-render with proper scale)
-      setZoom(visualZoom);
+      setZoom(finalZoom);
       
       // Update pinchStart.zoom to current zoom to prevent accumulation on next pinch
       setPinchStart({
         ...pinchStart,
-        zoom: visualZoom,
+        zoom: finalZoom,
       });
     }
     
@@ -432,7 +441,21 @@ export default function PDFViewer({
   // Fullscreen mobile mode (Google PDF Reader style)
   if (fullscreen && isMobile) {
     return (
-      <div className="w-full h-full relative flex flex-col bg-slate-50" style={{ height: '100dvh', width: '100%', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <div 
+        className="w-full h-full relative flex flex-col bg-slate-50" 
+        style={{ 
+          height: '100dvh', 
+          width: '100vw', 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0,
+          margin: 0,
+          padding: 0,
+          zIndex: 200
+        }}
+      >
         {/* Pages container - Google PDF Reader style */}
         <div
           ref={pagesContainerRef}
@@ -445,6 +468,8 @@ export default function PDFViewer({
             overflow: readOnly ? (zoom > 1 ? 'auto' : 'y-auto') : 'auto',
             overflowX: readOnly ? (zoom > 1 ? 'auto' : 'hidden') : 'auto',
             overflowY: 'auto',
+            margin: 0,
+            padding: 0,
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}

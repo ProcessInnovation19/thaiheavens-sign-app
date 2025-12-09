@@ -434,7 +434,7 @@ export default function SignPage() {
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                       </svg>
-                      Indietro
+                      Back
                     </button>
                   </div>
                 )}
@@ -455,12 +455,12 @@ export default function SignPage() {
                           }
                         }}
                         className="absolute top-4 left-4 z-50 px-4 py-2 bg-white/90 hover:bg-white text-slate-700 rounded-lg flex items-center gap-2 transition-colors shadow-2xl font-semibold"
-                        aria-label="Indietro"
+                        aria-label="Back"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
-                        <span className="hidden sm:inline">Indietro</span>
+                        <span className="hidden sm:inline">Back</span>
                       </button>
                     )}
                     
@@ -537,7 +537,7 @@ export default function SignPage() {
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                       </svg>
-                      Indietro
+                      Back
                     </button>
                     <button
                       onClick={async () => {
