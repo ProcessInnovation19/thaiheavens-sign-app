@@ -29,6 +29,7 @@ export default function PDFViewer({
   onViewportReady,
   fullscreen = false,
   onPositionUpdate,
+  selectedPage,
 }: PDFViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pagesContainerRef = useRef<HTMLDivElement>(null);
@@ -52,6 +53,9 @@ export default function PDFViewer({
   const [isResizing, setIsResizing] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  
+  // Current page for signature positioning (use selectedPage prop if provided, otherwise default to 1)
+  const [currentPage, setCurrentPage] = useState(selectedPage || 1);
 
   // Note: selectedPage is used for signature positioning, not for navigation
 
@@ -129,11 +133,12 @@ export default function PDFViewer({
         const devicePixelRatio = window.devicePixelRatio || 2;
         const qualityScale = Math.max(2, devicePixelRatio); // Minimum 2x quality
         
-        // For signature positioning mode, show only first page
+        // For signature positioning mode, show only current page
         // For readOnly mode, show all pages
-        const pagesToRender = readOnly ? numPages : 1;
+        const startPage = readOnly ? 1 : currentPage;
+        const endPage = readOnly ? numPages : currentPage;
         
-        for (let pageNum = 1; pageNum <= pagesToRender; pageNum++) {
+        for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
           const page = await pdfRef.current.getPage(pageNum);
           const viewport = page.getViewport({ scale: 1 });
           
@@ -258,7 +263,7 @@ export default function PDFViewer({
     };
 
     renderAllPages();
-  }, [pdfUrl, numPages, readOnly, onViewportReady]);
+  }, [pdfUrl, numPages, readOnly, onViewportReady, currentPage]);
   // NOTE: Removed 'zoom' from dependencies to prevent re-render during pinch
   // Zoom is now handled purely with CSS transform for smooth experience
 
@@ -299,7 +304,7 @@ export default function PDFViewer({
       container.addEventListener('mousemove', handleMouseMove);
       return () => container.removeEventListener('mousemove', handleMouseMove);
     }
-  }, [readOnly, selectedPosition]);
+  }, [readOnly, selectedPosition, currentPage]);
 
   // Handle drag for signature box
   useEffect(() => {
@@ -316,7 +321,7 @@ export default function PDFViewer({
       
       // Convert to PDF coordinates and update
       if (onPositionUpdate) {
-        const pageInfo = pagesRef.current[0];
+        const pageInfo = pagesRef.current[currentPage - 1];
         const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
         const pdfX = newX * pdfScaleRatio;
         const pdfY = (pageInfo.viewport.height - newY - selectedPosition.height) * pdfScaleRatio;
@@ -347,11 +352,11 @@ export default function PDFViewer({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, selectedPosition, dragStart, onPositionUpdate]);
+  }, [isDragging, selectedPosition, dragStart, onPositionUpdate, currentPage]);
 
   // Handle resize for signature box
   useEffect(() => {
-    if (!isResizing || !selectedPosition || !resizeStart) return;
+    if (!isResizing || !selectedPosition || !resizeStart || !pagesRef.current[currentPage - 1]) return;
     
     const handleMouseMove = (e: MouseEvent) => {
       if (!pagesContainerRef.current) return;
@@ -364,18 +369,21 @@ export default function PDFViewer({
       const newHeight = newWidth / aspectRatio;
       
       // Convert to PDF coordinates and update
-      if (onPositionUpdate && pagesRef.current[0]) {
-        const pdfCoords = canvasToPdf(1, selectedPosition.x, selectedPosition.y, newWidth, newHeight);
+      if (onPositionUpdate) {
+        const pageInfo = pagesRef.current[currentPage - 1];
+        const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
+        const pdfX = selectedPosition.x * pdfScaleRatio;
+        const pdfY = (pageInfo.viewport.height - selectedPosition.y - newHeight) * pdfScaleRatio;
         
         onPositionUpdate({
           x: selectedPosition.x,
           y: selectedPosition.y,
           width: newWidth,
           height: newHeight,
-          pdfX: pdfCoords.x,
-          pdfY: pdfCoords.y,
-          pdfWidth: pdfCoords.width,
-          pdfHeight: pdfCoords.height,
+          pdfX: pdfX,
+          pdfY: pdfY,
+          pdfWidth: newWidth * pdfScaleRatio,
+          pdfHeight: newHeight * pdfScaleRatio,
         });
       }
     };
@@ -392,7 +400,7 @@ export default function PDFViewer({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, selectedPosition, resizeStart, onPositionUpdate]);
+  }, [isResizing, selectedPosition, resizeStart, onPositionUpdate, currentPage]);
 
   // Convert canvas coordinates to PDF coordinates (for signature positioning)
   const canvasToPdf = (pageNum: number, canvasX: number, canvasY: number, canvasWidth: number, canvasHeight: number) => {
@@ -474,6 +482,65 @@ export default function PDFViewer({
   if (!readOnly) {
     return (
       <div className="w-full relative">
+        {/* Page navigation controls */}
+        {numPages > 1 && (
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <button
+              onClick={() => {
+                if (currentPage > 1) {
+                  setCurrentPage(currentPage - 1);
+                  // Reset selected position when changing page
+                  if (onPositionUpdate) {
+                    onPositionUpdate({
+                      x: 0,
+                      y: 0,
+                      width: 200,
+                      height: 100,
+                      pdfX: 0,
+                      pdfY: 0,
+                      pdfWidth: 200 / (pagesRef.current[currentPage - 2]?.viewport?.scale || 1),
+                      pdfHeight: 100 / (pagesRef.current[currentPage - 2]?.viewport?.scale || 1),
+                    });
+                  }
+                }
+              }}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Previous
+            </button>
+            <span className="text-slate-700 font-medium">
+              Page {currentPage} of {numPages}
+            </span>
+            <button
+              onClick={() => {
+                if (currentPage < numPages) {
+                  setCurrentPage(currentPage + 1);
+                  // Reset selected position when changing page
+                  if (onPositionUpdate && pagesRef.current[currentPage]) {
+                    const pageInfo = pagesRef.current[currentPage];
+                    const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
+                    onPositionUpdate({
+                      x: 0,
+                      y: 0,
+                      width: 200,
+                      height: 100,
+                      pdfX: 0,
+                      pdfY: 0,
+                      pdfWidth: 200 * pdfScaleRatio,
+                      pdfHeight: 100 * pdfScaleRatio,
+                    });
+                  }
+                }
+              }}
+              disabled={currentPage === numPages}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+        )}
+        
         {/* Pages container - one page at a time for signature positioning */}
         <div
           ref={containerRef}
@@ -526,8 +593,8 @@ export default function PDFViewer({
                 )}
                 
                 {/* Fixed box after click */}
-                {selectedPosition && pagesRef.current[0]?.canvas && (() => {
-                  const canvas = pagesRef.current[0].canvas;
+                {selectedPosition && pagesRef.current[currentPage - 1]?.canvas && (() => {
+                  const canvas = pagesRef.current[currentPage - 1].canvas;
                   const canvasRect = canvas.getBoundingClientRect();
                   const containerRect = pagesContainerRef.current?.getBoundingClientRect();
                   const canvasOffsetX = containerRect ? canvasRect.left - containerRect.left : 0;
