@@ -199,7 +199,6 @@ export default function PDFViewer({
           if (!readOnly && onPageClick) {
             canvas.addEventListener('click', (e) => {
               const rect = canvas.getBoundingClientRect();
-              const containerRect = container.getBoundingClientRect();
               const scaleX = canvas.width / rect.width;
               const scaleY = canvas.height / rect.height;
               const canvasX = (e.clientX - rect.left) * scaleX;
@@ -210,21 +209,19 @@ export default function PDFViewer({
               const defaultWidth = 200;
               const defaultHeight = 100;
               
-              // Center the box on click position (relative to container)
-              if (onPositionUpdate) {
-                // Calculate box position relative to container
-                // Need to account for canvas position within container
-                const canvasOffsetX = rect.left - containerRect.left;
-                const canvasOffsetY = rect.top - containerRect.top;
-                const clickXInContainer = (e.clientX - rect.left) + canvasOffsetX;
-                const clickYInContainer = (e.clientY - rect.top) + canvasOffsetY;
+              // Center the box on click position (using canvas coordinates directly)
+              if (onPositionUpdate && pagesRef.current[pageNum - 1]) {
+                const pageInfo = pagesRef.current[pageNum - 1];
+                // Use canvas coordinates directly (like AdminPage does)
+                // The box will be positioned relative to the canvas position in container
+                const boxX = (e.clientX - rect.left) - defaultWidth / 2;
+                const boxY = (e.clientY - rect.top) - defaultHeight / 2;
                 
-                const boxX = clickXInContainer - defaultWidth / 2;
-                const boxY = clickYInContainer - defaultHeight / 2;
-                
-                // Convert to PDF coordinates using canvas coordinates
-                const pdfBoxX = pdfCoords.x - (defaultWidth / scaleX) / 2;
-                const pdfBoxY = pdfCoords.y - (defaultHeight / scaleY) / 2;
+                // Convert to PDF coordinates
+                // Scale factor from canvas display to PDF (1.0 scale)
+                const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
+                const pdfBoxX = (boxX * pdfScaleRatio);
+                const pdfBoxY = ((pageInfo.viewport.height - boxY - defaultHeight) * pdfScaleRatio);
                 
                 onPositionUpdate({
                   x: boxX,
@@ -233,8 +230,8 @@ export default function PDFViewer({
                   height: defaultHeight,
                   pdfX: pdfBoxX,
                   pdfY: pdfBoxY,
-                  pdfWidth: defaultWidth / scaleX,
-                  pdfHeight: defaultHeight / scaleY,
+                  pdfWidth: defaultWidth * pdfScaleRatio,
+                  pdfHeight: defaultHeight * pdfScaleRatio,
                 });
               }
               
@@ -465,7 +462,7 @@ export default function PDFViewer({
             className="w-full relative"
             style={{ 
               position: 'relative',
-              cursor: 'crosshair', // Custom cursor for signature positioning
+              cursor: 'none', // Hide default cursor, we'll use custom
             }}
           >
             {/* Pages are rendered here by useEffect */}
@@ -474,7 +471,7 @@ export default function PDFViewer({
             {pagesContainerRef.current && (
               <>
                 {/* Preview box that follows cursor */}
-                {!selectedPosition && mousePosition && (
+                {!selectedPosition && mousePosition && pagesRef.current[0]?.canvas && (
                   <div
                     style={{
                       position: 'absolute',
@@ -489,25 +486,41 @@ export default function PDFViewer({
                   />
                 )}
                 
+                {/* Custom cursor - rectangle */}
+                {!selectedPosition && mousePosition && (
+                  <div
+                    style={{
+                      position: 'fixed',
+                      left: `${mousePosition.x + (pagesContainerRef.current?.getBoundingClientRect().left || 0) - 100}px`,
+                      top: `${mousePosition.y + (pagesContainerRef.current?.getBoundingClientRect().top || 0) - 50}px`,
+                      width: '200px',
+                      height: '100px',
+                      border: '2px solid #ef4444',
+                      pointerEvents: 'none',
+                      zIndex: 9999,
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    }}
+                  />
+                )}
+                
                 {/* Fixed box after click */}
-                {selectedPosition && (
+                {selectedPosition && pagesRef.current[0]?.canvas && (
                   <div
                     ref={signatureBoxRef}
                     onMouseDown={(e) => {
                       if (e.target === resizeHandleRef.current) return;
                       setIsDragging(true);
-                      if (pagesContainerRef.current) {
-                        const rect = pagesContainerRef.current.getBoundingClientRect();
-                        setDragStart({
-                          x: e.clientX - rect.left - selectedPosition.x,
-                          y: e.clientY - rect.top - selectedPosition.y,
-                        });
-                      }
+                      const canvas = pagesRef.current[0].canvas;
+                      const canvasRect = canvas.getBoundingClientRect();
+                      setDragStart({
+                        x: e.clientX - canvasRect.left - selectedPosition.x,
+                        y: e.clientY - canvasRect.top - selectedPosition.y,
+                      });
                     }}
                     style={{
                       position: 'absolute',
-                      left: `${selectedPosition.x}px`,
-                      top: `${selectedPosition.y}px`,
+                      left: `${pagesRef.current[0].canvas.getBoundingClientRect().left - (pagesContainerRef.current?.getBoundingClientRect().left || 0) + selectedPosition.x}px`,
+                      top: `${pagesRef.current[0].canvas.getBoundingClientRect().top - (pagesContainerRef.current?.getBoundingClientRect().top || 0) + selectedPosition.y}px`,
                       width: `${selectedPosition.width}px`,
                       height: `${selectedPosition.height}px`,
                       border: '2px solid #ef4444',
@@ -554,8 +567,9 @@ export default function PDFViewer({
                         borderRadius: '2px',
                       }}
                     />
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
               </>
             )}
           </div>
