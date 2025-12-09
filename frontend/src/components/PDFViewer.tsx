@@ -223,7 +223,9 @@ export default function PDFViewer({
                 const boxX = canvasX - defaultWidth / 2;
                 const boxY = canvasY - defaultHeight / 2;
                 
-                // Convert to PDF coordinates (scale 1.0)
+                // Convert to PDF coordinates (scale 1.0) - MUST match AdminPage calculation
+                // AdminPage uses scale 1.5, but PDFViewer uses dynamic scale
+                // We need to use the actual viewport scale for conversion
                 const displayScale = pageInfo.viewport.scale || 1;
                 const pdfScaleRatio = 1.0 / displayScale;
                 const pdfWidth = defaultWidth * pdfScaleRatio;
@@ -231,6 +233,7 @@ export default function PDFViewer({
                 // Convert canvas coordinates to PDF coordinates and center
                 // canvasX and canvasY are in canvas pixel coordinates (at display scale)
                 // Convert to PDF coordinates (scale 1.0) and center the box
+                // This MUST match AdminPage: pdfX = (canvasX / 1.5) - pdfWidth / 2
                 const pdfBoxX = (canvasX * pdfScaleRatio) - pdfWidth / 2;
                 const pdfBoxY = (canvasY * pdfScaleRatio) - pdfHeight / 2;
                 
