@@ -564,23 +564,7 @@ export default function PDFViewer({
             {/* Signature box overlay */}
             {pagesContainerRef.current && (
               <>
-                {/* Preview box that follows cursor */}
-                {!selectedPosition && mousePosition && pagesRef.current[0]?.canvas && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: `${mousePosition.x - 100}px`,
-                      top: `${mousePosition.y - 50}px`,
-                      width: '200px',
-                      height: '100px',
-                      border: '2px dashed #ef4444',
-                      pointerEvents: 'none',
-                      zIndex: 10,
-                    }}
-                  />
-                )}
-                
-                {/* Custom cursor - rectangle that follows mouse */}
+                {/* Cursor rectangle - follows mouse, centered on cursor */}
                 {!selectedPosition && mousePosition && pagesRef.current[currentPage - 1]?.canvas && (
                   <div
                     style={{
@@ -592,8 +576,7 @@ export default function PDFViewer({
                       border: '2px solid #ef4444',
                       pointerEvents: 'none',
                       zIndex: 9999,
-                      backgroundColor: 'rgba(239, 68, 68, 0.25)',
-                      boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.7)',
+                      backgroundColor: 'rgba(239, 68, 68, 0.2)',
                     }}
                   />
                 )}
