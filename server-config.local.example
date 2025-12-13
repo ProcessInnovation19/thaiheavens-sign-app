@@ -12,3 +12,6 @@ SERVER_USER=root
 # 2. Copy to server: ssh-copy-id root@94.237.101.88
 # 3. Then you can SSH without password
 
+
+
+

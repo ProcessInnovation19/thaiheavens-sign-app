@@ -9,3 +9,6 @@ cd .. && \
 pm2 restart thaiheavens-backend && \
 echo "✅ Deploy completato!"
 
+
+
+

@@ -117,3 +117,6 @@ Nei log di deployment, cerca:
 - ❌ Errori di git pull = Problemi di permessi o repository
 
 
+
+
+

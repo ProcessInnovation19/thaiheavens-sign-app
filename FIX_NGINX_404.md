@@ -153,3 +153,6 @@ La soluzione è:
 - Aggiungere una location esatta `= /index.html` che ha priorità
 - O modificare la location regex per servire i file statici invece di andare a `@proxy`
 
+
+
+

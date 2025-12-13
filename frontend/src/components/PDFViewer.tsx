@@ -157,11 +157,12 @@ export default function PDFViewer({
           canvas.width = renderViewport.width;
           canvas.height = renderViewport.height;
           // Display at final size (with zoom applied)
-          canvas.style.width = `${containerWidth * effectiveZoom}px`;
+          canvas.style.width = '100%';
+          canvas.style.maxWidth = `${containerWidth * effectiveZoom}px`;
           canvas.style.height = 'auto';
           canvas.style.display = 'block';
-          // Add top margin only to first page, bottom margin to all pages
-          canvas.style.marginTop = pageNum === 1 ? '16px' : '0';
+          // No margins on canvas in signature mode - margins handled by wrapper
+          canvas.style.marginTop = readOnly ? (pageNum === 1 ? '16px' : '0') : '0';
           canvas.style.marginBottom = readOnly ? '24px' : '0'; // Space between pages only in readOnly mode
           canvas.style.boxShadow = readOnly ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : 'none'; // Elevated shadow only in readOnly
           canvas.style.backgroundColor = '#ffffff';
@@ -216,28 +217,21 @@ export default function PDFViewer({
               const defaultWidth = 200;
               const defaultHeight = 100;
               
-              // Center the box on click position (using canvas coordinates directly, like AdminPage)
+              // Center the box on click position
               if (onPositionUpdate && pagesRef.current[pageNum - 1]) {
                 const pageInfo = pagesRef.current[pageNum - 1];
-                // Center the box on the click position
+                // Center the box on the click position (no clamping - click is always inside PDF)
                 const boxX = canvasX - defaultWidth / 2;
                 const boxY = canvasY - defaultHeight / 2;
                 
-                // Convert to PDF coordinates (scale 1.0) - MUST match AdminPage calculation
-                // AdminPage uses scale 1.5, but PDFViewer uses dynamic scale
-                // We need to use the actual viewport scale for conversion
+                // Convert to PDF coordinates (scale 1.0)
                 const displayScale = pageInfo.viewport.scale || 1;
                 const pdfScaleRatio = 1.0 / displayScale;
                 const pdfWidth = defaultWidth * pdfScaleRatio;
                 const pdfHeight = defaultHeight * pdfScaleRatio;
-                // Convert canvas coordinates to PDF coordinates and center
-                // canvasX and canvasY are in canvas pixel coordinates (at display scale)
-                // Convert to PDF coordinates (scale 1.0) and center the box
-                // This MUST match AdminPage: pdfX = (canvasX / 1.5) - pdfWidth / 2
-                const pdfBoxX = (canvasX * pdfScaleRatio) - pdfWidth / 2;
-                const pdfBoxY = (canvasY * pdfScaleRatio) - pdfHeight / 2;
+                const pdfBoxX = boxX * pdfScaleRatio;
+                const pdfBoxY = boxY * pdfScaleRatio;
                 
-                // Update position immediately
                 onPositionUpdate({
                   x: boxX,
                   y: boxY,
@@ -279,39 +273,68 @@ export default function PDFViewer({
   // Removed all touch event handlers - using native scroll only
 
   // Handle mouse move for signature box preview (follows cursor)
-  useEffect(() => {
-    if (readOnly || selectedPosition) return;
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (readOnly) {
+      setMousePosition(null);
+      return;
+    }
     
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!pagesContainerRef.current || !pagesRef.current[currentPage - 1]?.canvas) return;
-      const canvas = pagesRef.current[currentPage - 1].canvas;
-      const canvasRect = canvas.getBoundingClientRect();
-      const containerRect = pagesContainerRef.current.getBoundingClientRect();
+    // Hide preview while dragging or resizing
+    if (isDragging || isResizing) {
+      setMousePosition(null);
+      return;
+    }
+    
+    if (!pagesContainerRef.current || !pagesRef.current[currentPage - 1]?.canvas) return;
+    const canvas = pagesRef.current[currentPage - 1].canvas;
+    const canvasRect = canvas.getBoundingClientRect();
+    const containerRect = pagesContainerRef.current.getBoundingClientRect();
+    
+    // Check if mouse is over the canvas
+    if (e.clientX >= canvasRect.left && e.clientX <= canvasRect.right &&
+        e.clientY >= canvasRect.top && e.clientY <= canvasRect.bottom) {
       
-      // Check if mouse is over the canvas
-      if (e.clientX >= canvasRect.left && e.clientX <= canvasRect.right &&
-          e.clientY >= canvasRect.top && e.clientY <= canvasRect.bottom) {
-        // Calculate position relative to container for the cursor rectangle
+      // If there's a selected position, check if mouse is inside the placed box
+      if (selectedPosition) {
+        const scaleX = canvasRect.width / canvas.width;
+        const scaleY = canvasRect.height / canvas.height;
         const canvasOffsetX = canvasRect.left - containerRect.left;
         const canvasOffsetY = canvasRect.top - containerRect.top;
-        const mouseXInCanvas = e.clientX - canvasRect.left;
-        const mouseYInCanvas = e.clientY - canvasRect.top;
         
-        setMousePosition({
-          x: canvasOffsetX + mouseXInCanvas,
-          y: canvasOffsetY + mouseYInCanvas,
-        });
-      } else {
-        setMousePosition(null);
+        const boxLeft = canvasOffsetX + (selectedPosition.x * scaleX);
+        const boxTop = canvasOffsetY + (selectedPosition.y * scaleY);
+        const boxRight = boxLeft + (selectedPosition.width * scaleX);
+        const boxBottom = boxTop + (selectedPosition.height * scaleY);
+        
+        const mouseXInContainer = e.clientX - containerRect.left;
+        const mouseYInContainer = e.clientY - containerRect.top;
+        
+        // If mouse is inside the placed box, hide preview (show normal cursor for drag/resize)
+        if (mouseXInContainer >= boxLeft && mouseXInContainer <= boxRight &&
+            mouseYInContainer >= boxTop && mouseYInContainer <= boxBottom) {
+          setMousePosition(null);
+          return;
+        }
       }
-    };
-    
-    const container = pagesContainerRef.current;
-    if (container) {
-      container.addEventListener('mousemove', handleMouseMove);
-      return () => container.removeEventListener('mousemove', handleMouseMove);
+      
+      // Calculate position relative to container for the cursor rectangle
+      const canvasOffsetX = canvasRect.left - containerRect.left;
+      const canvasOffsetY = canvasRect.top - containerRect.top;
+      const mouseXInCanvas = e.clientX - canvasRect.left;
+      const mouseYInCanvas = e.clientY - canvasRect.top;
+      
+      setMousePosition({
+        x: canvasOffsetX + mouseXInCanvas,
+        y: canvasOffsetY + mouseYInCanvas,
+      });
+    } else {
+      setMousePosition(null);
     }
-  }, [readOnly, selectedPosition, currentPage]);
+  };
+  
+  const handleMouseLeave = () => {
+    setMousePosition(null);
+  };
 
   // Handle drag for signature box
   useEffect(() => {
@@ -324,9 +347,19 @@ export default function PDFViewer({
       const scaleX = canvasRect.width / canvas.width;
       const scaleY = canvasRect.height / canvas.height;
       
+      // Clamp mouse position to canvas visible boundaries
+      // Get the actual rendered canvas dimensions from its computed style
+      const computedStyle = window.getComputedStyle(canvas);
+      const canvasDisplayWidth = parseFloat(computedStyle.width);
+      const canvasDisplayHeight = parseFloat(computedStyle.height);
+      const clampedClientX = Math.max(canvasRect.left, Math.min(e.clientX, canvasRect.left + canvasDisplayWidth));
+      const clampedClientY = Math.max(canvasRect.top, Math.min(e.clientY, canvasRect.top + canvasDisplayHeight));
+      
       // Calculate new position relative to canvas (in canvas coordinates)
-      const newX = ((e.clientX - canvasRect.left) / scaleX) - dragStart.x;
-      const newY = ((e.clientY - canvasRect.top) / scaleY) - dragStart.y;
+      const newX = ((clampedClientX - canvasRect.left) / scaleX) - dragStart.x;
+      const newY = ((clampedClientY - canvasRect.top) / scaleY) - dragStart.y;
+      
+      // No clamping on rectangle position - it can go partially outside
       
       // Convert to PDF coordinates and update
       if (onPositionUpdate) {
@@ -369,14 +402,26 @@ export default function PDFViewer({
     if (!isResizing || !selectedPosition || !resizeStart || !pagesRef.current[currentPage - 1]) return;
     
     const handleMouseMove = (e: MouseEvent) => {
-      if (!pagesContainerRef.current) return;
-      // Calculate delta from initial mouse position
-      const deltaX = e.clientX - resizeStart.x;
+      if (!pagesContainerRef.current || !pagesRef.current[currentPage - 1]?.canvas) return;
+      const canvas = pagesRef.current[currentPage - 1].canvas;
+      const canvasRect = canvas.getBoundingClientRect();
+      
+      // Clamp mouse position to canvas boundaries
+      const computedStyle = window.getComputedStyle(canvas);
+      const canvasDisplayWidth = parseFloat(computedStyle.width);
+      const clampedClientX = Math.max(canvasRect.left, Math.min(e.clientX, canvasRect.left + canvasDisplayWidth));
+      
+      // Calculate delta from initial mouse position (using clamped position)
+      const deltaX = clampedClientX - resizeStart.x;
       
       // Maintain 2:1 aspect ratio
       const aspectRatio = 2;
-      const newWidth = Math.max(100, resizeStart.width + deltaX);
-      const newHeight = newWidth / aspectRatio;
+      let newWidth = Math.max(100, resizeStart.width + deltaX);
+      let newHeight = newWidth / aspectRatio;
+      
+      // Ensure minimum size
+      newWidth = Math.max(100, newWidth);
+      newHeight = Math.max(50, newHeight);
       
       // Convert to PDF coordinates and update
       if (onPositionUpdate) {
@@ -555,14 +600,19 @@ export default function PDFViewer({
         {/* Pages container - one page at a time for signature positioning */}
         <div
           ref={containerRef}
-          className="flex flex-col items-center p-1 sm:p-2"
+          className="flex flex-col items-center pt-4 p-1 sm:p-2"
         >
           <div
             ref={pagesContainerRef}
             className="w-full relative"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
             style={{ 
               position: 'relative',
-              cursor: 'none', // Hide default cursor, we'll use custom
+              cursor: mousePosition ? 'none' : 'default', // Hide default cursor only when showing preview
+              userSelect: 'none', // Prevent text selection while interacting
+              WebkitUserSelect: 'none',
+              overflow: 'hidden', // Hide elements that go outside the PDF area
             }}
           >
             {/* Pages are rendered here by useEffect */}
@@ -571,21 +621,79 @@ export default function PDFViewer({
             {pagesContainerRef.current && (
               <>
                 {/* Cursor rectangle - follows mouse, centered on cursor */}
-                {!selectedPosition && mousePosition && pagesRef.current[currentPage - 1]?.canvas && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: `${mousePosition.x - 100}px`,
-                      top: `${mousePosition.y - 50}px`,
-                      width: '200px',
-                      height: '100px',
-                      border: '2px solid #ef4444',
-                      pointerEvents: 'none',
-                      zIndex: 9999,
-                      backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                    }}
-                  />
-                )}
+                {mousePosition && pagesRef.current[currentPage - 1]?.canvas && (() => {
+                  // Match the placed box dimensions exactly
+                  const canvas = pagesRef.current[currentPage - 1].canvas;
+                  const canvasRect = canvas.getBoundingClientRect();
+                  const scaleX = canvasRect.width / canvas.width;
+                  const scaleY = canvasRect.height / canvas.height;
+                  
+                  // Same dimensions as click handler (200x100 in canvas coords)
+                  const defaultWidth = 200;
+                  const defaultHeight = 100;
+                  
+                  // Convert to display pixels (same as box rendering)
+                  const previewWidth = defaultWidth * scaleX;
+                  const previewHeight = defaultHeight * scaleY;
+                  
+                  return (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${mousePosition.x - previewWidth / 2}px`,
+                        top: `${mousePosition.y - previewHeight / 2}px`,
+                        width: `${previewWidth}px`,
+                        height: `${previewHeight}px`,
+                        border: '2px dashed #ef4444',
+                        pointerEvents: 'none',
+                        zIndex: 9999,
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        borderRadius: '2px',
+                      }}
+                    >
+                      {/* Guide line at 2/3 height */}
+                      <div style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: `${(previewHeight * 2) / 3}px`,
+                        height: '1px',
+                        borderTop: '1px dashed #ef4444',
+                        opacity: 0.6,
+                      }} />
+                      {/* Crosshair at center */}
+                      <div style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '16px',
+                        height: '16px',
+                      }}>
+                        {/* Horizontal line */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: 0,
+                          right: 0,
+                          height: '2px',
+                          marginTop: '-1px',
+                          backgroundColor: '#ef4444',
+                        }} />
+                        {/* Vertical line */}
+                        <div style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: 0,
+                          bottom: 0,
+                          width: '2px',
+                          marginLeft: '-1px',
+                          backgroundColor: '#ef4444',
+                        }} />
+                      </div>
+                    </div>
+                  );
+                })()}
                 
                 {/* Fixed box after click */}
                 {selectedPosition && pagesRef.current[currentPage - 1]?.canvas && (() => {
@@ -602,6 +710,10 @@ export default function PDFViewer({
                   const scaleY = canvasRect.height / canvas.height;
                   const boxXInContainer = canvasOffsetX + (selectedPosition.x * scaleX);
                   const boxYInContainer = canvasOffsetY + (selectedPosition.y * scaleY);
+                  
+                  // #region agent log
+                  fetch('http://127.0.0.1:7242/ingest/552d0c1e-1614-4c1f-b710-a32c57fa14b9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PDFViewer.tsx:boxRender',message:'Box render coordinates',data:{selectedPositionX:selectedPosition.x,selectedPositionY:selectedPosition.y,selectedPositionWidth:selectedPosition.width,selectedPositionHeight:selectedPosition.height,canvasWidth:canvas.width,canvasHeight:canvas.height,canvasRectWidth:canvasRect.width,canvasRectHeight:canvasRect.height,scaleX,scaleY,boxXInContainer,boxYInContainer,canvasOffsetX,canvasOffsetY},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4-H5'})}).catch(()=>{});
+                  // #endregion
                   
                   return (
                     <div
