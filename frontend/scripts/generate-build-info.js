@@ -1,6 +1,7 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 // Increment version number for each deployment
 const VERSION = '1.3.0'; // Increment this number when making changes - FEATURE: Signature cursor preview and improved positioning
@@ -64,10 +65,36 @@ const buildInfo = {
 };
 
 // Ensure we have a valid working directory
-const cwd = process.cwd();
-if (!cwd) {
-  console.error('ERROR: process.cwd() returned null or undefined');
-  process.exit(1);
+let cwd;
+try {
+  cwd = process.cwd();
+  if (!cwd || typeof cwd !== 'string' || cwd.length === 0) {
+    // Fallback: use import.meta.url to get script directory
+    console.warn('process.cwd() returned invalid value, trying fallback...');
+    try {
+      const __filename = fileURLToPath(import.meta.url);
+      cwd = dirname(dirname(__filename)); // Go up from scripts/ to frontend/
+      console.log('Using fallback directory:', cwd);
+    } catch (fallbackError) {
+      console.error('ERROR: Both process.cwd() and fallback failed');
+      console.error('process.cwd() returned:', cwd);
+      console.error('Fallback error:', fallbackError.message);
+      // Last resort: use current directory
+      cwd = '.';
+      console.warn('Using current directory as last resort');
+    }
+  }
+} catch (error) {
+  console.error('ERROR: Failed to get current working directory:', error.message);
+  // Last resort fallback
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    cwd = dirname(dirname(__filename));
+    console.warn('Using import.meta.url fallback:', cwd);
+  } catch {
+    cwd = '.';
+    console.warn('Using current directory as last resort');
+  }
 }
 
 const outputPath = join(cwd, 'src', 'build-info.json');

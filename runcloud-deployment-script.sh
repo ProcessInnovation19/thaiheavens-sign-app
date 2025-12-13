@@ -88,8 +88,13 @@ cd frontend
 rm -f src/build-info.json
 npm install
 # Generate build-info.json with version and commit hash
-# SKIP_GIT is already exported above if Git is not working
-npm run prebuild
+# Pass SKIP_GIT explicitly to npm if Git is not working
+if [ "$GIT_WORKING" != true ]; then
+    echo "Running prebuild with SKIP_GIT=true..."
+    SKIP_GIT=true npm run prebuild
+else
+    npm run prebuild
+fi
 if [ ! -f "src/build-info.json" ]; then
     echo "ERROR: build-info.json not generated!"
     exit 1
