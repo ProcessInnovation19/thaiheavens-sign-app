@@ -9,11 +9,23 @@ cd /home/fabrizio/webapps/thaiheavens-sign-app || {
     exit 1
 }
 
-# Check if Git works (don't try to fix permissions - requires sudo)
+# Check if Git works and try to fix permissions if needed
 echo "Checking Git repository..."
 GIT_WORKING=false
 if [ -d ".git" ]; then
-    # Simply test if Git works - don't try to fix permissions (requires sudo/root)
+    # First, try to fix permissions if we can (only if sudo is available and we're not root)
+    if [ "$(id -u)" != "0" ] && command -v sudo &> /dev/null; then
+        echo "Attempting to fix Git permissions (requires sudo)..."
+        sudo chmod -R u+w .git 2>/dev/null || true
+        sudo chown -R $(whoami):$(whoami) .git 2>/dev/null || true
+    elif [ "$(id -u)" = "0" ]; then
+        # We're root, fix permissions directly
+        echo "Fixing Git permissions as root..."
+        chmod -R u+w .git 2>/dev/null || true
+        chown -R fabrizio:fabrizio .git 2>/dev/null || true
+    fi
+    
+    # Test if Git works now
     if git rev-parse --git-dir >/dev/null 2>&1 && git rev-parse HEAD >/dev/null 2>&1; then
         GIT_WORKING=true
         echo "Git repository is working"
