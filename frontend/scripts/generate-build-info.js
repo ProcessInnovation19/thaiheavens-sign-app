@@ -10,16 +10,28 @@ const VERSION = '1.3.0'; // Increment this number when making changes - FEATURE:
 let commitHash = 'unknown';
 
 // Skip Git if SKIP_GIT environment variable is set
-const skipGit = process.env.SKIP_GIT === 'true' || process.env.SKIP_GIT === '1';
+const skipGitEnv = process.env.SKIP_GIT;
+console.log('SKIP_GIT environment variable:', skipGitEnv);
+const skipGit = skipGitEnv === 'true' || skipGitEnv === '1' || skipGitEnv === 'TRUE';
+console.log('skipGit value:', skipGit);
+
 if (skipGit) {
-  console.log('Skipping Git operations (SKIP_GIT is set)');
+  console.log('Skipping Git operations (SKIP_GIT is set to:', skipGitEnv, ')');
 } else {
+  console.log('Attempting to get Git commit hash...');
   try {
     // Try to get commit hash, but don't fail if Git is not available or corrupted
     // Try from project root first, then from current directory
-    const currentDir = process.cwd();
-    if (!currentDir) {
-      throw new Error('process.cwd() returned null');
+    let currentDir;
+    try {
+      currentDir = process.cwd();
+      if (!currentDir || typeof currentDir !== 'string') {
+        console.warn('process.cwd() returned invalid value, skipping Git');
+        throw new Error('process.cwd() returned invalid value');
+      }
+    } catch (cwdError) {
+      console.warn('Could not get current directory, skipping Git:', cwdError.message);
+      throw cwdError;
     }
     const projectRoot = join(currentDir, '..');
     let result = null;
@@ -48,11 +60,14 @@ if (skipGit) {
     
     if (result && typeof result === 'string' && result.trim()) {
       commitHash = result.trim();
+      console.log('Git commit hash obtained:', commitHash);
+    } else {
+      console.log('Git commit hash not available, using "unknown"');
     }
   } catch (error) {
     // Git not available or repository corrupted - use 'unknown'
     // Don't throw, just use default
-    console.warn('Could not get git commit hash, using "unknown"');
+    console.warn('Could not get git commit hash, using "unknown":', error.message);
   }
 }
 
