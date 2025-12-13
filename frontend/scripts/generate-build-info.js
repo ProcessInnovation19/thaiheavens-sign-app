@@ -134,9 +134,11 @@ try {
   process.exit(1);
 }
 
-const outputPath = 'src/build-info.json';
-const distPath = 'dist/build-info.json';
-const distDir = 'dist';
+// Build absolute paths based on working directory
+// Script is in frontend/scripts/, so paths are relative to frontend/
+const outputPath = join(workingDir, 'src', 'build-info.json');
+const distPath = join(workingDir, 'dist', 'build-info.json');
+const distDir = join(workingDir, 'dist');
 
 console.log('Working directory:', workingDir);
 console.log('Writing build-info.json to:', outputPath);
