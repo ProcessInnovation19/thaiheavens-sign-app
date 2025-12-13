@@ -50,7 +50,11 @@ cd ..
 
 # Frontend: Install dependencies and build
 cd frontend
+# Remove old build-info.json to ensure fresh generation
+rm -f src/build-info.json
 npm install
+# Generate build-info.json with version and commit hash
+npm run prebuild
 npm run build
 cd ..
 
