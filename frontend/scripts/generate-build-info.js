@@ -11,14 +11,27 @@ let commitHash = 'unknown';
 
 // Skip Git if SKIP_GIT environment variable is set OR if .skip-git file exists
 const skipGitEnv = process.env.SKIP_GIT;
-const skipGitFile = existsSync('.skip-git');
+let skipGitFile = false;
+try {
+  const cwd = process.cwd();
+  console.log('Current working directory:', cwd);
+  if (cwd && typeof cwd === 'string') {
+    skipGitFile = existsSync('.skip-git');
+  }
+} catch (e) {
+  console.warn('Could not check for .skip-git file:', e.message);
+}
 console.log('SKIP_GIT environment variable:', skipGitEnv);
 console.log('.skip-git file exists:', skipGitFile);
+if (skipGitFile) {
+  console.log('Found .skip-git file, will skip Git operations');
+}
 const skipGit = skipGitFile || skipGitEnv === 'true' || skipGitEnv === '1' || skipGitEnv === 'TRUE';
-console.log('skipGit value:', skipGit);
+console.log('Final skipGit value:', skipGit);
 
 if (skipGit) {
-  console.log('Skipping Git operations (SKIP_GIT is set to:', skipGitEnv, ')');
+  console.log('Skipping Git operations (SKIP_GIT is set to:', skipGitEnv, 'or .skip-git file exists)');
+  // Don't try to get commit hash at all
 } else {
   console.log('Attempting to get Git commit hash...');
   try {
@@ -27,15 +40,28 @@ if (skipGit) {
     let currentDir;
     try {
       currentDir = process.cwd();
-      if (!currentDir || typeof currentDir !== 'string') {
+      if (!currentDir || typeof currentDir !== 'string' || currentDir.length === 0) {
         console.warn('process.cwd() returned invalid value, skipping Git');
-        throw new Error('process.cwd() returned invalid value');
+        throw new Error('process.cwd() returned invalid value: ' + String(currentDir));
       }
     } catch (cwdError) {
       console.warn('Could not get current directory, skipping Git:', cwdError.message);
+      // Don't proceed with Git operations if we can't get current directory
       throw cwdError;
     }
+    
+    // Validate currentDir before using it in join()
+    if (!currentDir || typeof currentDir !== 'string') {
+      throw new Error('currentDir is invalid before join()');
+    }
+    
     const projectRoot = join(currentDir, '..');
+    
+    // Validate projectRoot before using it
+    if (!projectRoot || typeof projectRoot !== 'string') {
+      throw new Error('projectRoot is invalid after join()');
+    }
+    
     let result = null;
     
     try {
