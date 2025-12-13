@@ -136,6 +136,12 @@ try {
 
 // Build absolute paths based on working directory
 // Script is in frontend/scripts/, so paths are relative to frontend/
+// Final validation of workingDir before using it
+if (!workingDir || typeof workingDir !== 'string' || workingDir.length === 0) {
+  console.error('FATAL: workingDir is invalid:', workingDir);
+  process.exit(1);
+}
+
 const outputPath = join(workingDir, 'src', 'build-info.json');
 const distPath = join(workingDir, 'dist', 'build-info.json');
 const distDir = join(workingDir, 'dist');
