@@ -11,37 +11,54 @@ cd /home/fabrizio/webapps/thaiheavens-sign-app || {
 
 # Fix Git permissions and repository state
 echo "Checking Git repository..."
+GIT_WORKING=false
 if [ -d ".git" ]; then
-    # Fix permissions on .git directory
+    # Fix permissions on entire .git directory recursively
+    echo "Fixing Git permissions..."
     chmod -R u+w .git 2>/dev/null || true
-    # Remove corrupted index file (git will recreate it)
+    chown -R $(whoami) .git 2>/dev/null || true
+    
+    # Remove corrupted files
     rm -f .git/index 2>/dev/null || true
-    # Remove problematic refs
     rm -f .git/refs/remotes/origin/HEAD 2>/dev/null || true
-    # Try to initialize git config if missing
-    if [ ! -f ".git/config" ]; then
-        echo "Git config missing, initializing..."
-        git init 2>/dev/null || true
+    
+    # Fix permissions on objects directory
+    if [ -d ".git/objects" ]; then
+        chmod -R u+w .git/objects 2>/dev/null || true
+        find .git/objects -type f -exec chmod 644 {} \; 2>/dev/null || true
+        find .git/objects -type d -exec chmod 755 {} \; 2>/dev/null || true
+    fi
+    
+    # Test if Git works now
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+        GIT_WORKING=true
+    else
+        echo "WARNING: Git repository is corrupted, will skip Git operations"
     fi
 fi
 
-# Update code from Git
-echo "Pulling latest changes from Git..."
-# Try pull, if it fails try fetch and reset
-if ! git pull origin main 2>/dev/null; then
-    echo "Pull failed, trying fetch and reset..."
-    # Set remote if not exists
-    if ! git remote get-url origin >/dev/null 2>&1; then
-        git remote add origin https://github.com/ProcessInnovation19/thaiheavens-sign-app.git 2>/dev/null || true
+# Update code from Git (only if Git is working)
+if [ "$GIT_WORKING" = true ]; then
+    echo "Pulling latest changes from Git..."
+    # Try pull, if it fails try fetch and reset
+    if ! git pull origin main 2>/dev/null; then
+        echo "Pull failed, trying fetch and reset..."
+        # Set remote if not exists
+        if ! git remote get-url origin >/dev/null 2>&1; then
+            git remote add origin https://github.com/ProcessInnovation19/thaiheavens-sign-app.git 2>/dev/null || true
+        fi
+        git fetch origin main 2>/dev/null || true
+        if git rev-parse --verify origin/main >/dev/null 2>&1; then
+            git reset --hard origin/main 2>/dev/null || {
+                echo "WARNING: Git reset failed, continuing with existing code..."
+            }
+        else
+            echo "WARNING: Cannot access origin/main, continuing with existing code..."
+        fi
     fi
-    git fetch origin main 2>/dev/null || true
-    if git rev-parse --verify origin/main >/dev/null 2>&1; then
-        git reset --hard origin/main 2>/dev/null || {
-            echo "WARNING: Git reset failed, continuing with existing code..."
-        }
-    else
-        echo "WARNING: Cannot access origin/main, continuing with existing code..."
-    fi
+else
+    echo "WARNING: Skipping Git operations due to repository corruption"
+    echo "Continuing with existing code files..."
 fi
 
 # Backend: Install dependencies and build
@@ -63,6 +80,10 @@ cd frontend
 rm -f src/build-info.json
 npm install
 # Generate build-info.json with version and commit hash
+# Set SKIP_GIT if Git is not working to avoid errors
+if [ "$GIT_WORKING" != true ]; then
+    export SKIP_GIT=true
+fi
 npm run prebuild
 if [ ! -f "src/build-info.json" ]; then
     echo "ERROR: build-info.json not generated!"
