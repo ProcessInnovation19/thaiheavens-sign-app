@@ -1,4 +1,4 @@
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';
 import { join } from 'path';
 
@@ -9,11 +9,18 @@ const VERSION = '1.3.0'; // Increment this number when making changes - FEATURE:
 let commitHash = 'unknown';
 
 // Skip Git if SKIP_GIT environment variable is set
-if (!process.env.SKIP_GIT) {
+const skipGit = process.env.SKIP_GIT === 'true' || process.env.SKIP_GIT === '1';
+if (skipGit) {
+  console.log('Skipping Git operations (SKIP_GIT is set)');
+} else {
   try {
     // Try to get commit hash, but don't fail if Git is not available or corrupted
     // Try from project root first, then from current directory
-    const projectRoot = join(process.cwd(), '..');
+    const currentDir = process.cwd();
+    if (!currentDir) {
+      throw new Error('process.cwd() returned null');
+    }
+    const projectRoot = join(currentDir, '..');
     let result = null;
     
     try {
@@ -29,7 +36,7 @@ if (!process.env.SKIP_GIT) {
         result = execSync('git rev-parse --short HEAD', { 
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'ignore'],
-          cwd: process.cwd(),
+          cwd: currentDir,
           maxBuffer: 1024 * 1024,
         });
       } catch (e2) {
@@ -46,8 +53,6 @@ if (!process.env.SKIP_GIT) {
     // Don't throw, just use default
     console.warn('Could not get git commit hash, using "unknown"');
   }
-} else {
-  console.log('Skipping Git operations (SKIP_GIT is set)');
 }
 
 const buildTimestamp = Date.now().toString();
@@ -58,11 +63,23 @@ const buildInfo = {
   commit: commitHash,
 };
 
-const outputPath = join(process.cwd(), 'src', 'build-info.json');
+// Ensure we have a valid working directory
+const cwd = process.cwd();
+if (!cwd) {
+  console.error('ERROR: process.cwd() returned null or undefined');
+  process.exit(1);
+}
+
+const outputPath = join(cwd, 'src', 'build-info.json');
 writeFileSync(outputPath, JSON.stringify(buildInfo, null, 2));
 
 // Also write to dist for API access
-const distPath = join(process.cwd(), 'dist', 'build-info.json');
+const distPath = join(cwd, 'dist', 'build-info.json');
+// Create dist directory if it doesn't exist
+const distDir = join(cwd, 'dist');
+if (!existsSync(distDir)) {
+  mkdirSync(distDir, { recursive: true });
+}
 writeFileSync(distPath, JSON.stringify(buildInfo, null, 2));
 
 console.log('Build info generated:', buildInfo);
