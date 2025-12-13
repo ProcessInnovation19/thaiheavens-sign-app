@@ -132,4 +132,9 @@ else
 fi
 
 echo "✓ Deployment completed successfully!"
+echo ""
+echo "Build info from frontend:"
+if [ -f "frontend/src/build-info.json" ]; then
+    cat frontend/src/build-info.json
+fi
 
