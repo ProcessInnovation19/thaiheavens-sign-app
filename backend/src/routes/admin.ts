@@ -111,3 +111,31 @@ adminRoutes.post('/send-email', async (req, res) => {
   }
 });
 
+// Get application version info
+adminRoutes.get('/version', (req, res) => {
+  try {
+    const buildInfoPath = path.join(process.cwd(), '..', 'frontend', 'dist', 'build-info.json');
+    let buildInfo = null;
+    
+    if (fs.existsSync(buildInfoPath)) {
+      const buildInfoContent = fs.readFileSync(buildInfoPath, 'utf-8');
+      buildInfo = JSON.parse(buildInfoContent);
+    }
+    
+    res.json({
+      version: buildInfo?.version || 'unknown',
+      timestamp: buildInfo?.timestamp || null,
+      date: buildInfo?.date || null,
+      commit: buildInfo?.commit || null,
+    });
+  } catch (error: any) {
+    console.error('Get version error:', error);
+    res.json({
+      version: 'unknown',
+      timestamp: null,
+      date: null,
+      commit: null,
+    });
+  }
+});
+
