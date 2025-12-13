@@ -9,9 +9,38 @@ cd /home/fabrizio/webapps/thaiheavens-sign-app || {
     exit 1
 }
 
+# Fix Git permissions and repository state
+echo "Checking Git repository..."
+if [ -d ".git" ]; then
+    # Fix permissions on .git directory
+    chmod -R u+w .git 2>/dev/null || true
+    # Try to fix index file permissions
+    if [ -f ".git/index" ]; then
+        chmod 644 .git/index 2>/dev/null || true
+        # If index is still problematic, remove it (git will recreate)
+        if ! git status >/dev/null 2>&1; then
+            echo "Removing corrupted index file..."
+            rm -f .git/index 2>/dev/null || true
+        fi
+    fi
+    # Remove problematic refs
+    rm -f .git/refs/remotes/origin/HEAD 2>/dev/null || true
+fi
+
 # Update code from Git
 echo "Pulling latest changes from Git..."
-git pull origin main || git merge origin/main
+# Try pull, if it fails try fetch and reset
+if ! git pull origin main 2>/dev/null; then
+    echo "Pull failed, trying fetch and reset..."
+    git fetch origin main 2>/dev/null || true
+    if git rev-parse --verify origin/main >/dev/null 2>&1; then
+        git reset --hard origin/main 2>/dev/null || {
+            echo "WARNING: Git reset failed, continuing with existing code..."
+        }
+    else
+        echo "WARNING: Cannot access origin/main, continuing with existing code..."
+    fi
+fi
 
 # Backend: Install dependencies and build
 echo "Building backend..."
