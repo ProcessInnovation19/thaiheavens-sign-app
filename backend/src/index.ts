@@ -26,6 +26,34 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Public version endpoint (for verification)
+app.get('/api/version', (req, res) => {
+  try {
+    const buildInfoPath = path.join(projectRoot, 'frontend', 'dist', 'build-info.json');
+    let buildInfo = null;
+    
+    if (fs.existsSync(buildInfoPath)) {
+      const buildInfoContent = fs.readFileSync(buildInfoPath, 'utf-8');
+      buildInfo = JSON.parse(buildInfoContent);
+    }
+    
+    res.json({
+      version: buildInfo?.version || 'unknown',
+      timestamp: buildInfo?.timestamp || null,
+      date: buildInfo?.date || null,
+      commit: buildInfo?.commit || null,
+    });
+  } catch (error: any) {
+    console.error('Get version error:', error);
+    res.json({
+      version: 'unknown',
+      timestamp: null,
+      date: null,
+      commit: null,
+    });
+  }
+});
+
 // Routes
 app.use('/api', uploadRoutes);
 app.use('/api', sessionRoutes);
