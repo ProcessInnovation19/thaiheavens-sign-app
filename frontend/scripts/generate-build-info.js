@@ -9,14 +9,23 @@ const VERSION = '1.3.0'; // Increment this number when making changes - FEATURE:
 // Get git commit hash
 let commitHash = 'unknown';
 
+// Get frontend directory from script location (more reliable than process.cwd())
+// Script is in frontend/scripts/generate-build-info.js
+const scriptPath = fileURLToPath(import.meta.url);
+const scriptsDir = dirname(scriptPath); // frontend/scripts/
+const frontendDir = dirname(scriptsDir); // frontend/
+console.log('Script path:', scriptPath);
+console.log('Scripts directory:', scriptsDir);
+console.log('Frontend directory:', frontendDir);
+
 // Skip Git if SKIP_GIT environment variable is set OR if .skip-git file exists
 const skipGitEnv = process.env.SKIP_GIT;
 let skipGitFile = false;
 try {
-  const cwd = process.cwd();
-  console.log('Current working directory:', cwd);
-  if (cwd && typeof cwd === 'string') {
-    skipGitFile = existsSync('.skip-git');
+  const skipGitPath = join(frontendDir, '.skip-git');
+  skipGitFile = existsSync(skipGitPath);
+  if (skipGitFile) {
+    console.log('Found .skip-git file at:', skipGitPath);
   }
 } catch (e) {
   console.warn('Could not check for .skip-git file:', e.message);
@@ -36,32 +45,15 @@ if (skipGit) {
   console.log('Attempting to get Git commit hash...');
   try {
     // Try to get commit hash, but don't fail if Git is not available or corrupted
-    // Try from project root first, then from current directory
-    let currentDir;
-    try {
-      currentDir = process.cwd();
-      if (!currentDir || typeof currentDir !== 'string' || currentDir.length === 0) {
-        console.warn('process.cwd() returned invalid value, skipping Git');
-        throw new Error('process.cwd() returned invalid value: ' + String(currentDir));
-      }
-    } catch (cwdError) {
-      console.warn('Could not get current directory, skipping Git:', cwdError.message);
-      // Don't proceed with Git operations if we can't get current directory
-      throw cwdError;
-    }
-    
-    // Validate currentDir before using it in join()
-    if (!currentDir || typeof currentDir !== 'string') {
-      throw new Error('currentDir is invalid before join()');
-    }
-    
-    const projectRoot = join(currentDir, '..');
+    // Use frontendDir to find project root (go up one level)
+    const projectRoot = dirname(frontendDir); // Should be the project root
     
     // Validate projectRoot before using it
-    if (!projectRoot || typeof projectRoot !== 'string') {
-      throw new Error('projectRoot is invalid after join()');
+    if (!projectRoot || typeof projectRoot !== 'string' || projectRoot.length === 0) {
+      throw new Error('projectRoot is invalid: ' + String(projectRoot));
     }
     
+    console.log('Trying to get Git commit hash from project root:', projectRoot);
     let result = null;
     
     try {
@@ -72,16 +64,18 @@ if (skipGit) {
         maxBuffer: 1024 * 1024, // 1MB buffer
       });
     } catch (e) {
-      // Try from current directory
+      // Try from frontend directory as fallback
+      console.log('Git failed from project root, trying frontend directory...');
       try {
         result = execSync('git rev-parse --short HEAD', { 
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'ignore'],
-          cwd: currentDir,
+          cwd: frontendDir,
           maxBuffer: 1024 * 1024,
         });
       } catch (e2) {
         // Git not available or repository corrupted - silently fail
+        console.log('Git failed from frontend directory too, using "unknown"');
         result = null;
       }
     }
@@ -107,51 +101,17 @@ const buildInfo = {
   commit: commitHash,
 };
 
-// Get working directory - use import.meta.url as primary method (more reliable in ES modules)
-// Script is in frontend/scripts/generate-build-info.js, so we need to get frontend/ directory
-let workingDir;
-try {
-  // Primary method: use import.meta.url to get script location
-  const scriptPath = fileURLToPath(import.meta.url);
-  const scriptsDir = dirname(scriptPath); // frontend/scripts/
-  workingDir = dirname(scriptsDir); // frontend/
-  console.log('Using frontend directory from import.meta.url:', workingDir);
-  
-  // Validate the path
-  if (!workingDir || typeof workingDir !== 'string' || workingDir.length === 0) {
-    throw new Error('Invalid workingDir from import.meta.url: ' + String(workingDir));
-  }
-  
-  // Fallback: try process.cwd() if import.meta.url fails
-  // (This shouldn't happen, but just in case)
-} catch (metaError) {
-  console.warn('import.meta.url method failed, trying process.cwd() fallback...', metaError.message);
-  try {
-    workingDir = process.cwd();
-    if (!workingDir || typeof workingDir !== 'string' || workingDir.length === 0) {
-      throw new Error('process.cwd() also returned invalid value: ' + String(workingDir));
-    }
-    console.log('Using frontend directory from process.cwd():', workingDir);
-  } catch (cwdError) {
-    console.error('FATAL: Both import.meta.url and process.cwd() failed');
-    console.error('import.meta.url error:', metaError.message);
-    console.error('process.cwd() error:', cwdError.message);
-    console.error('This is required to write build-info.json files.');
-    process.exit(1);
-  }
-}
-
-// Build absolute paths based on working directory
-// Script is in frontend/scripts/, so paths are relative to frontend/
-// Final validation of workingDir before using it
-if (!workingDir || typeof workingDir !== 'string' || workingDir.length === 0) {
-  console.error('FATAL: workingDir is invalid:', workingDir);
+// Use frontendDir that we already calculated above
+// Validate it
+if (!frontendDir || typeof frontendDir !== 'string' || frontendDir.length === 0) {
+  console.error('FATAL: frontendDir is invalid:', frontendDir);
   process.exit(1);
 }
 
-const outputPath = join(workingDir, 'src', 'build-info.json');
-const distPath = join(workingDir, 'dist', 'build-info.json');
-const distDir = join(workingDir, 'dist');
+// Build absolute paths based on frontend directory
+const outputPath = join(frontendDir, 'src', 'build-info.json');
+const distPath = join(frontendDir, 'dist', 'build-info.json');
+const distDir = join(frontendDir, 'dist');
 
 console.log('Working directory:', workingDir);
 console.log('Writing build-info.json to:', outputPath);
