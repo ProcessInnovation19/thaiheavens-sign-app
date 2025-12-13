@@ -21,6 +21,7 @@ if (!process.env.SKIP_GIT) {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'ignore'], // Ignore stderr
         cwd: projectRoot,
+        maxBuffer: 1024 * 1024, // 1MB buffer
       });
     } catch (e) {
       // Try from current directory
@@ -29,18 +30,20 @@ if (!process.env.SKIP_GIT) {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'ignore'],
           cwd: process.cwd(),
+          maxBuffer: 1024 * 1024,
         });
       } catch (e2) {
-        // Git not available or repository corrupted
+        // Git not available or repository corrupted - silently fail
         result = null;
       }
     }
     
-    if (result && result.trim()) {
+    if (result && typeof result === 'string' && result.trim()) {
       commitHash = result.trim();
     }
   } catch (error) {
     // Git not available or repository corrupted - use 'unknown'
+    // Don't throw, just use default
     console.warn('Could not get git commit hash, using "unknown"');
   }
 } else {

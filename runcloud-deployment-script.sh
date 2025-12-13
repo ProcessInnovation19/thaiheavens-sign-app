@@ -47,18 +47,26 @@ if [ "$GIT_WORKING" = true ]; then
         if ! git remote get-url origin >/dev/null 2>&1; then
             git remote add origin https://github.com/ProcessInnovation19/thaiheavens-sign-app.git 2>/dev/null || true
         fi
-        git fetch origin main 2>/dev/null || true
-        if git rev-parse --verify origin/main >/dev/null 2>&1; then
-            git reset --hard origin/main 2>/dev/null || {
-                echo "WARNING: Git reset failed, continuing with existing code..."
-            }
-        else
-            echo "WARNING: Cannot access origin/main, continuing with existing code..."
+        if ! git fetch origin main 2>/dev/null; then
+            echo "WARNING: Git fetch failed, marking Git as non-working"
+            GIT_WORKING=false
+        elif ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+            echo "WARNING: Cannot access origin/main, marking Git as non-working"
+            GIT_WORKING=false
+        elif ! git reset --hard origin/main 2>/dev/null; then
+            echo "WARNING: Git reset failed, marking Git as non-working"
+            GIT_WORKING=false
         fi
     fi
 else
     echo "WARNING: Skipping Git operations due to repository corruption"
     echo "Continuing with existing code files..."
+fi
+
+# Export SKIP_GIT if Git is not working
+if [ "$GIT_WORKING" != true ]; then
+    export SKIP_GIT=true
+    echo "SKIP_GIT=true will be used for build process"
 fi
 
 # Backend: Install dependencies and build
@@ -80,10 +88,7 @@ cd frontend
 rm -f src/build-info.json
 npm install
 # Generate build-info.json with version and commit hash
-# Set SKIP_GIT if Git is not working to avoid errors
-if [ "$GIT_WORKING" != true ]; then
-    export SKIP_GIT=true
-fi
+# SKIP_GIT is already exported above if Git is not working
 npm run prebuild
 if [ ! -f "src/build-info.json" ]; then
     echo "ERROR: build-info.json not generated!"
