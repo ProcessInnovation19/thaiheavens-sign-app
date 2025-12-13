@@ -8,9 +8,37 @@ const VERSION = '1.3.0'; // Increment this number when making changes - FEATURE:
 // Get git commit hash
 let commitHash = 'unknown';
 try {
-  commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+  // Try to get commit hash, but don't fail if Git is not available or corrupted
+  // Try from project root first, then from current directory
+  const projectRoot = join(process.cwd(), '..');
+  let result = null;
+  
+  try {
+    result = execSync('git rev-parse --short HEAD', { 
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'], // Ignore stderr
+      cwd: projectRoot,
+    });
+  } catch (e) {
+    // Try from current directory
+    try {
+      result = execSync('git rev-parse --short HEAD', { 
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+        cwd: process.cwd(),
+      });
+    } catch (e2) {
+      // Git not available or repository corrupted
+      result = null;
+    }
+  }
+  
+  if (result && result.trim()) {
+    commitHash = result.trim();
+  }
 } catch (error) {
-  console.warn('Could not get git commit hash:', error.message);
+  // Git not available or repository corrupted - use 'unknown'
+  console.warn('Could not get git commit hash, using "unknown"');
 }
 
 const buildTimestamp = Date.now().toString();

@@ -14,17 +14,15 @@ echo "Checking Git repository..."
 if [ -d ".git" ]; then
     # Fix permissions on .git directory
     chmod -R u+w .git 2>/dev/null || true
-    # Try to fix index file permissions
-    if [ -f ".git/index" ]; then
-        chmod 644 .git/index 2>/dev/null || true
-        # If index is still problematic, remove it (git will recreate)
-        if ! git status >/dev/null 2>&1; then
-            echo "Removing corrupted index file..."
-            rm -f .git/index 2>/dev/null || true
-        fi
-    fi
+    # Remove corrupted index file (git will recreate it)
+    rm -f .git/index 2>/dev/null || true
     # Remove problematic refs
     rm -f .git/refs/remotes/origin/HEAD 2>/dev/null || true
+    # Try to initialize git config if missing
+    if [ ! -f ".git/config" ]; then
+        echo "Git config missing, initializing..."
+        git init 2>/dev/null || true
+    fi
 fi
 
 # Update code from Git
@@ -32,6 +30,10 @@ echo "Pulling latest changes from Git..."
 # Try pull, if it fails try fetch and reset
 if ! git pull origin main 2>/dev/null; then
     echo "Pull failed, trying fetch and reset..."
+    # Set remote if not exists
+    if ! git remote get-url origin >/dev/null 2>&1; then
+        git remote add origin https://github.com/ProcessInnovation19/thaiheavens-sign-app.git 2>/dev/null || true
+    fi
     git fetch origin main 2>/dev/null || true
     if git rev-parse --verify origin/main >/dev/null 2>&1; then
         git reset --hard origin/main 2>/dev/null || {
