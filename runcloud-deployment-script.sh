@@ -9,31 +9,17 @@ cd /home/fabrizio/webapps/thaiheavens-sign-app || {
     exit 1
 }
 
-# Fix Git permissions and repository state
+# Check if Git works (don't try to fix permissions - requires sudo)
 echo "Checking Git repository..."
 GIT_WORKING=false
 if [ -d ".git" ]; then
-    # Fix permissions on entire .git directory recursively
-    echo "Fixing Git permissions..."
-    chmod -R u+w .git 2>/dev/null || true
-    chown -R $(whoami) .git 2>/dev/null || true
-    
-    # Remove corrupted files
-    rm -f .git/index 2>/dev/null || true
-    rm -f .git/refs/remotes/origin/HEAD 2>/dev/null || true
-    
-    # Fix permissions on objects directory
-    if [ -d ".git/objects" ]; then
-        chmod -R u+w .git/objects 2>/dev/null || true
-        find .git/objects -type f -exec chmod 644 {} \; 2>/dev/null || true
-        find .git/objects -type d -exec chmod 755 {} \; 2>/dev/null || true
-    fi
-    
-    # Test if Git works now
-    if git rev-parse --git-dir >/dev/null 2>&1; then
+    # Simply test if Git works - don't try to fix permissions (requires sudo/root)
+    if git rev-parse --git-dir >/dev/null 2>&1 && git rev-parse HEAD >/dev/null 2>&1; then
         GIT_WORKING=true
+        echo "Git repository is working"
     else
-        echo "WARNING: Git repository is corrupted, will skip Git operations"
+        echo "WARNING: Git repository is corrupted or has permission issues"
+        echo "Will skip Git operations and continue with build"
     fi
 fi
 
@@ -86,18 +72,19 @@ echo "Building frontend..."
 cd frontend
 # Remove old build-info.json to ensure fresh generation
 rm -f src/build-info.json
+# Remove any existing skip-git flag
+rm -f .skip-git
 npm install
 # Generate build-info.json with version and commit hash
 # Create a flag file if Git is not working (more reliable than env var)
 if [ "$GIT_WORKING" != true ]; then
-    echo "Creating SKIP_GIT flag file..."
-    touch .skip-git
+    echo "Creating .skip-git flag file in frontend directory..."
+    echo "skip" > .skip-git
     export SKIP_GIT=true
-    echo "Running prebuild with SKIP_GIT=true..."
+    echo "Running prebuild with SKIP_GIT=true and .skip-git file..."
     SKIP_GIT=true npm run prebuild
     rm -f .skip-git
 else
-    rm -f .skip-git
     npm run prebuild
 fi
 if [ ! -f "src/build-info.json" ]; then
