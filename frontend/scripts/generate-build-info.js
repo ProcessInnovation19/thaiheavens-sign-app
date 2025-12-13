@@ -109,21 +109,53 @@ const buildInfo = {
 
 // Use relative paths - when npm runs this script, working directory is frontend/
 // So we can use simple relative paths
+// Validate that we have a valid working directory before proceeding
+let workingDir;
+try {
+  workingDir = process.cwd();
+  if (!workingDir || typeof workingDir !== 'string' || workingDir.length === 0) {
+    throw new Error('process.cwd() returned invalid value: ' + String(workingDir));
+  }
+} catch (cwdError) {
+  console.error('FATAL: Cannot get current working directory:', cwdError.message);
+  console.error('This is required to write build-info.json files.');
+  process.exit(1);
+}
+
 const outputPath = 'src/build-info.json';
 const distPath = 'dist/build-info.json';
 const distDir = 'dist';
 
+console.log('Working directory:', workingDir);
 console.log('Writing build-info.json to:', outputPath);
-writeFileSync(outputPath, JSON.stringify(buildInfo, null, 2));
+try {
+  writeFileSync(outputPath, JSON.stringify(buildInfo, null, 2));
+  console.log('✓ Successfully wrote', outputPath);
+} catch (writeError) {
+  console.error('ERROR writing', outputPath, ':', writeError.message);
+  throw writeError;
+}
 
 // Also write to dist for API access
 console.log('Writing build-info.json to dist:', distPath);
 // Create dist directory if it doesn't exist
 if (!existsSync(distDir)) {
   console.log('Creating dist directory:', distDir);
-  mkdirSync(distDir, { recursive: true });
+  try {
+    mkdirSync(distDir, { recursive: true });
+    console.log('✓ Successfully created', distDir);
+  } catch (mkdirError) {
+    console.error('ERROR creating', distDir, ':', mkdirError.message);
+    throw mkdirError;
+  }
 }
-writeFileSync(distPath, JSON.stringify(buildInfo, null, 2));
+try {
+  writeFileSync(distPath, JSON.stringify(buildInfo, null, 2));
+  console.log('✓ Successfully wrote', distPath);
+} catch (writeError) {
+  console.error('ERROR writing', distPath, ':', writeError.message);
+  throw writeError;
+}
 
 console.log('Build info generated:', buildInfo);
 
