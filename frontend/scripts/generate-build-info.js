@@ -11,12 +11,34 @@ let commitHash = 'unknown';
 
 // Get frontend directory from script location (more reliable than process.cwd())
 // Script is in frontend/scripts/generate-build-info.js
-const scriptPath = fileURLToPath(import.meta.url);
-const scriptsDir = dirname(scriptPath); // frontend/scripts/
-const frontendDir = dirname(scriptsDir); // frontend/
-console.log('Script path:', scriptPath);
-console.log('Scripts directory:', scriptsDir);
-console.log('Frontend directory:', frontendDir);
+let scriptPath, scriptsDir, frontendDir;
+try {
+  if (!import.meta || !import.meta.url) {
+    throw new Error('import.meta.url is not available');
+  }
+  scriptPath = fileURLToPath(import.meta.url);
+  if (!scriptPath || typeof scriptPath !== 'string' || scriptPath.length === 0) {
+    throw new Error('fileURLToPath returned invalid value: ' + String(scriptPath));
+  }
+  scriptsDir = dirname(scriptPath); // frontend/scripts/
+  if (!scriptsDir || typeof scriptsDir !== 'string' || scriptsDir.length === 0) {
+    throw new Error('dirname(scriptPath) returned invalid value: ' + String(scriptsDir));
+  }
+  frontendDir = dirname(scriptsDir); // frontend/
+  if (!frontendDir || typeof frontendDir !== 'string' || frontendDir.length === 0) {
+    throw new Error('dirname(scriptsDir) returned invalid value: ' + String(frontendDir));
+  }
+  console.log('Script path:', scriptPath);
+  console.log('Scripts directory:', scriptsDir);
+  console.log('Frontend directory:', frontendDir);
+} catch (error) {
+  console.error('FATAL: Cannot determine script location:', error.message);
+  console.error('import.meta.url:', import.meta?.url);
+  console.error('scriptPath:', scriptPath);
+  console.error('scriptsDir:', scriptsDir);
+  console.error('frontendDir:', frontendDir);
+  process.exit(1);
+}
 
 // Skip Git if SKIP_GIT environment variable is set OR if .skip-git file exists
 const skipGitEnv = process.env.SKIP_GIT;
@@ -113,7 +135,6 @@ const outputPath = join(frontendDir, 'src', 'build-info.json');
 const distPath = join(frontendDir, 'dist', 'build-info.json');
 const distDir = join(frontendDir, 'dist');
 
-console.log('Working directory:', workingDir);
 console.log('Writing build-info.json to:', outputPath);
 try {
   writeFileSync(outputPath, JSON.stringify(buildInfo, null, 2));
