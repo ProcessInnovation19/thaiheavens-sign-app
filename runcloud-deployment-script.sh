@@ -88,11 +88,16 @@ cd frontend
 rm -f src/build-info.json
 npm install
 # Generate build-info.json with version and commit hash
-# Pass SKIP_GIT explicitly to npm if Git is not working
+# Create a flag file if Git is not working (more reliable than env var)
 if [ "$GIT_WORKING" != true ]; then
+    echo "Creating SKIP_GIT flag file..."
+    touch .skip-git
+    export SKIP_GIT=true
     echo "Running prebuild with SKIP_GIT=true..."
     SKIP_GIT=true npm run prebuild
+    rm -f .skip-git
 else
+    rm -f .skip-git
     npm run prebuild
 fi
 if [ ! -f "src/build-info.json" ]; then

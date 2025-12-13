@@ -9,10 +9,12 @@ const VERSION = '1.3.0'; // Increment this number when making changes - FEATURE:
 // Get git commit hash
 let commitHash = 'unknown';
 
-// Skip Git if SKIP_GIT environment variable is set
+// Skip Git if SKIP_GIT environment variable is set OR if .skip-git file exists
 const skipGitEnv = process.env.SKIP_GIT;
+const skipGitFile = existsSync('.skip-git');
 console.log('SKIP_GIT environment variable:', skipGitEnv);
-const skipGit = skipGitEnv === 'true' || skipGitEnv === '1' || skipGitEnv === 'TRUE';
+console.log('.skip-git file exists:', skipGitFile);
+const skipGit = skipGitFile || skipGitEnv === 'true' || skipGitEnv === '1' || skipGitEnv === 'TRUE';
 console.log('skipGit value:', skipGit);
 
 if (skipGit) {
