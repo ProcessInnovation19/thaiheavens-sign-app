@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import PDFViewer from '../components/PDFViewer';
 import { uploadPdf, createSession, getAllSessions, downloadSignedPdf, deleteSession, sendEmail } from '../services/api';
 import { SigningSession } from '../types';
-import buildInfo from '../build-info.json';
 
 type Step = 'sessions' | 'upload' | 'position' | 'create';
 
