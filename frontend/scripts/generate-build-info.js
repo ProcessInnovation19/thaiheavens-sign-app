@@ -11,32 +11,64 @@ let commitHash = 'unknown';
 
 // Get frontend directory from script location (more reliable than process.cwd())
 // Script is in frontend/scripts/generate-build-info.js
-let scriptPath, scriptsDir, frontendDir;
+let frontendDir;
 try {
-  if (!import.meta || !import.meta.url) {
-    throw new Error('import.meta.url is not available');
+  // Primary method: use import.meta.url
+  if (import.meta && import.meta.url) {
+    const scriptPath = fileURLToPath(import.meta.url);
+    if (scriptPath && typeof scriptPath === 'string' && scriptPath.length > 0) {
+      const scriptsDir = dirname(scriptPath); // frontend/scripts/
+      if (scriptsDir && typeof scriptsDir === 'string' && scriptsDir.length > 0) {
+        frontendDir = dirname(scriptsDir); // frontend/
+        if (frontendDir && typeof frontendDir === 'string' && frontendDir.length > 0) {
+          console.log('Using frontend directory from import.meta.url:', frontendDir);
+        }
+      }
+    }
   }
-  scriptPath = fileURLToPath(import.meta.url);
-  if (!scriptPath || typeof scriptPath !== 'string' || scriptPath.length === 0) {
-    throw new Error('fileURLToPath returned invalid value: ' + String(scriptPath));
-  }
-  scriptsDir = dirname(scriptPath); // frontend/scripts/
-  if (!scriptsDir || typeof scriptsDir !== 'string' || scriptsDir.length === 0) {
-    throw new Error('dirname(scriptPath) returned invalid value: ' + String(scriptsDir));
-  }
-  frontendDir = dirname(scriptsDir); // frontend/
+  
+  // Fallback: try process.cwd() if import.meta.url didn't work
   if (!frontendDir || typeof frontendDir !== 'string' || frontendDir.length === 0) {
-    throw new Error('dirname(scriptsDir) returned invalid value: ' + String(frontendDir));
+    console.warn('import.meta.url method failed, trying process.cwd()...');
+    try {
+      const cwd = process.cwd();
+      if (cwd && typeof cwd === 'string' && cwd.length > 0) {
+        // Check if we're already in frontend/ directory
+        if (existsSync(join(cwd, 'package.json')) && existsSync(join(cwd, 'src'))) {
+          frontendDir = cwd;
+          console.log('Using frontend directory from process.cwd():', frontendDir);
+        } else {
+          // Try going up one level (if we're in scripts/)
+          const parent = dirname(cwd);
+          if (existsSync(join(parent, 'package.json')) && existsSync(join(parent, 'src'))) {
+            frontendDir = parent;
+            console.log('Using frontend directory from process.cwd() parent:', frontendDir);
+          }
+        }
+      }
+    } catch (cwdError) {
+      console.warn('process.cwd() also failed:', cwdError.message);
+    }
   }
-  console.log('Script path:', scriptPath);
-  console.log('Scripts directory:', scriptsDir);
-  console.log('Frontend directory:', frontendDir);
+  
+  // Final validation
+  if (!frontendDir || typeof frontendDir !== 'string' || frontendDir.length === 0) {
+    throw new Error('Could not determine frontend directory using any method');
+  }
+  
+  // Verify it's actually the frontend directory
+  if (!existsSync(join(frontendDir, 'package.json'))) {
+    throw new Error('Determined directory does not contain package.json: ' + frontendDir);
+  }
+  if (!existsSync(join(frontendDir, 'src'))) {
+    throw new Error('Determined directory does not contain src/: ' + frontendDir);
+  }
+  
+  console.log('Final frontend directory:', frontendDir);
 } catch (error) {
-  console.error('FATAL: Cannot determine script location:', error.message);
+  console.error('FATAL: Cannot determine frontend directory:', error.message);
   console.error('import.meta.url:', import.meta?.url);
-  console.error('scriptPath:', scriptPath);
-  console.error('scriptsDir:', scriptsDir);
-  console.error('frontendDir:', frontendDir);
+  console.error('process.cwd():', process.cwd?.());
   process.exit(1);
 }
 
@@ -131,9 +163,33 @@ if (!frontendDir || typeof frontendDir !== 'string' || frontendDir.length === 0)
 }
 
 // Build absolute paths based on frontend directory
-const outputPath = join(frontendDir, 'src', 'build-info.json');
-const distPath = join(frontendDir, 'dist', 'build-info.json');
-const distDir = join(frontendDir, 'dist');
+// Validate each path component before using join()
+const srcDir = 'src';
+const distDirName = 'dist';
+const buildInfoFileName = 'build-info.json';
+
+if (!srcDir || !distDirName || !buildInfoFileName) {
+  console.error('FATAL: Path components are invalid');
+  process.exit(1);
+}
+
+const outputPath = join(frontendDir, srcDir, buildInfoFileName);
+const distPath = join(frontendDir, distDirName, buildInfoFileName);
+const distDir = join(frontendDir, distDirName);
+
+// Final validation of all paths
+if (!outputPath || typeof outputPath !== 'string' || outputPath.length === 0) {
+  console.error('FATAL: outputPath is invalid:', outputPath);
+  process.exit(1);
+}
+if (!distPath || typeof distPath !== 'string' || distPath.length === 0) {
+  console.error('FATAL: distPath is invalid:', distPath);
+  process.exit(1);
+}
+if (!distDir || typeof distDir !== 'string' || distDir.length === 0) {
+  console.error('FATAL: distDir is invalid:', distDir);
+  process.exit(1);
+}
 
 console.log('Writing build-info.json to:', outputPath);
 try {
