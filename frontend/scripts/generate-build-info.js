@@ -114,8 +114,20 @@ let workingDir;
 try {
   workingDir = process.cwd();
   if (!workingDir || typeof workingDir !== 'string' || workingDir.length === 0) {
-    throw new Error('process.cwd() returned invalid value: ' + String(workingDir));
+    // Fallback: try to get directory from import.meta.url
+    console.warn('process.cwd() returned invalid value, trying fallback...');
+    try {
+      const scriptPath = fileURLToPath(import.meta.url);
+      workingDir = dirname(scriptPath);
+      console.log('Using script directory as fallback:', workingDir);
+      // Script is in frontend/scripts/, so go up one level to get frontend/
+      workingDir = dirname(workingDir);
+      console.log('Using frontend directory:', workingDir);
+    } catch (fallbackError) {
+      throw new Error('Both process.cwd() and import.meta.url fallback failed: ' + fallbackError.message);
+    }
   }
+  console.log('Working directory:', workingDir);
 } catch (cwdError) {
   console.error('FATAL: Cannot get current working directory:', cwdError.message);
   console.error('This is required to write build-info.json files.');
