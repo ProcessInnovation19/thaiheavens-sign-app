@@ -64,35 +64,28 @@ const buildInfo = {
   commit: commitHash,
 };
 
-// Ensure we have a valid working directory
+// Get working directory - use import.meta.url as primary method since it's more reliable
 let cwd;
 try {
-  cwd = process.cwd();
-  if (!cwd || typeof cwd !== 'string' || cwd.length === 0) {
-    // Fallback: use import.meta.url to get script directory
-    console.warn('process.cwd() returned invalid value, trying fallback...');
-    try {
-      const __filename = fileURLToPath(import.meta.url);
-      cwd = dirname(dirname(__filename)); // Go up from scripts/ to frontend/
-      console.log('Using fallback directory:', cwd);
-    } catch (fallbackError) {
-      console.error('ERROR: Both process.cwd() and fallback failed');
-      console.error('process.cwd() returned:', cwd);
-      console.error('Fallback error:', fallbackError.message);
-      // Last resort: use current directory
-      cwd = '.';
-      console.warn('Using current directory as last resort');
-    }
-  }
+  // Primary: use import.meta.url to get script location, then go up to frontend/
+  const __filename = fileURLToPath(import.meta.url);
+  const scriptDir = dirname(__filename); // scripts/
+  cwd = dirname(scriptDir); // frontend/
+  console.log('Using directory from import.meta.url:', cwd);
 } catch (error) {
-  console.error('ERROR: Failed to get current working directory:', error.message);
-  // Last resort fallback
+  // Fallback: try process.cwd()
   try {
-    const __filename = fileURLToPath(import.meta.url);
-    cwd = dirname(dirname(__filename));
-    console.warn('Using import.meta.url fallback:', cwd);
-  } catch {
-    cwd = '.';
+    cwd = process.cwd();
+    if (!cwd || typeof cwd !== 'string' || cwd.length === 0) {
+      throw new Error('process.cwd() returned invalid value');
+    }
+    console.log('Using process.cwd():', cwd);
+  } catch (cwdError) {
+    // Last resort: assume we're in frontend directory
+    console.error('ERROR: Failed to determine working directory');
+    console.error('import.meta.url error:', error.message);
+    console.error('process.cwd() error:', cwdError.message);
+    cwd = '.'; // Last resort
     console.warn('Using current directory as last resort');
   }
 }
