@@ -15,10 +15,18 @@ git log -1 --oneline
 
 echo ""
 echo "=== 2. Pull da Git ==="
-git pull origin main || {
-    echo "ERRORE: git pull fallito!"
-    exit 1
-}
+if git pull origin main 2>/dev/null; then
+    echo "✓ Git pull completato"
+else
+    echo "WARNING: git pull fallito, provo fetch e reset..."
+    if git fetch origin main 2>/dev/null && git reset --hard origin/main 2>/dev/null; then
+        echo "✓ Git fetch e reset completati"
+    else
+        echo "WARNING: Git non funziona, continuo con il codice esistente..."
+        echo "Creo file .skip-git per il build..."
+        touch frontend/.skip-git || true
+    fi
+fi
 
 echo ""
 echo "=== 3. Backend Build ==="
@@ -42,7 +50,14 @@ rm -f src/build-info.json
 echo "Installing dependencies..."
 npm install
 echo "Generating build-info.json..."
-npm run prebuild
+# Se .skip-git esiste, passa SKIP_GIT=true
+if [ -f ".skip-git" ]; then
+    echo "File .skip-git trovato, uso SKIP_GIT=true..."
+    SKIP_GIT=true npm run prebuild
+    rm -f .skip-git
+else
+    npm run prebuild
+fi
 if [ ! -f "src/build-info.json" ]; then
     echo "ERRORE: build-info.json non generato!"
     exit 1
