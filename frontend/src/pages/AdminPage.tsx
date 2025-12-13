@@ -33,7 +33,6 @@ export default function AdminPage() {
   const [emailSent, setEmailSent] = useState(false);
   const [modalGuestEmail, setModalGuestEmail] = useState('');
   const [modalGuestName, setModalGuestName] = useState('');
-  const [serverVersion, setServerVersion] = useState<{ version: string; commit: string | null } | null>(null);
 
   const processFile = async (file: File) => {
     if (!file) {
@@ -261,18 +260,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     loadSessions();
-    loadServerVersion();
   }, []);
-
-  const loadServerVersion = async () => {
-    try {
-      const response = await fetch('/api/admin/version');
-      const data = await response.json();
-      setServerVersion(data);
-    } catch (error) {
-      console.error('Failed to load server version:', error);
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -333,22 +321,6 @@ export default function AdminPage() {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm text-slate-600">System Online</span>
-              </div>
-              {/* Version indicator */}
-              <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-lg border border-slate-200">
-                <span className="text-xs font-mono text-slate-600">
-                  v{buildInfo.version}
-                  {serverVersion && (
-                    <span className={`ml-2 ${serverVersion.version === buildInfo.version ? 'text-green-600' : 'text-red-600'}`}>
-                      {serverVersion.version === buildInfo.version ? '✓' : '⚠'}
-                    </span>
-                  )}
-                </span>
-                {serverVersion && serverVersion.version !== buildInfo.version && (
-                  <span className="text-xs text-red-600" title={`Server: v${serverVersion.version}, Local: v${buildInfo.version}`}>
-                    (Server: v{serverVersion.version})
-                  </span>
-                )}
               </div>
               <a
                 href="/docs/"
