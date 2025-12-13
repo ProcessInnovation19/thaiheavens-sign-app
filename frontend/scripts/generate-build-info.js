@@ -107,31 +107,38 @@ const buildInfo = {
   commit: commitHash,
 };
 
-// Use relative paths - when npm runs this script, working directory is frontend/
-// So we can use simple relative paths
-// Validate that we have a valid working directory before proceeding
+// Get working directory - use import.meta.url as primary method (more reliable in ES modules)
+// Script is in frontend/scripts/generate-build-info.js, so we need to get frontend/ directory
 let workingDir;
 try {
-  workingDir = process.cwd();
+  // Primary method: use import.meta.url to get script location
+  const scriptPath = fileURLToPath(import.meta.url);
+  const scriptsDir = dirname(scriptPath); // frontend/scripts/
+  workingDir = dirname(scriptsDir); // frontend/
+  console.log('Using frontend directory from import.meta.url:', workingDir);
+  
+  // Validate the path
   if (!workingDir || typeof workingDir !== 'string' || workingDir.length === 0) {
-    // Fallback: try to get directory from import.meta.url
-    console.warn('process.cwd() returned invalid value, trying fallback...');
-    try {
-      const scriptPath = fileURLToPath(import.meta.url);
-      workingDir = dirname(scriptPath);
-      console.log('Using script directory as fallback:', workingDir);
-      // Script is in frontend/scripts/, so go up one level to get frontend/
-      workingDir = dirname(workingDir);
-      console.log('Using frontend directory:', workingDir);
-    } catch (fallbackError) {
-      throw new Error('Both process.cwd() and import.meta.url fallback failed: ' + fallbackError.message);
-    }
+    throw new Error('Invalid workingDir from import.meta.url: ' + String(workingDir));
   }
-  console.log('Working directory:', workingDir);
-} catch (cwdError) {
-  console.error('FATAL: Cannot get current working directory:', cwdError.message);
-  console.error('This is required to write build-info.json files.');
-  process.exit(1);
+  
+  // Fallback: try process.cwd() if import.meta.url fails
+  // (This shouldn't happen, but just in case)
+} catch (metaError) {
+  console.warn('import.meta.url method failed, trying process.cwd() fallback...', metaError.message);
+  try {
+    workingDir = process.cwd();
+    if (!workingDir || typeof workingDir !== 'string' || workingDir.length === 0) {
+      throw new Error('process.cwd() also returned invalid value: ' + String(workingDir));
+    }
+    console.log('Using frontend directory from process.cwd():', workingDir);
+  } catch (cwdError) {
+    console.error('FATAL: Both import.meta.url and process.cwd() failed');
+    console.error('import.meta.url error:', metaError.message);
+    console.error('process.cwd() error:', cwdError.message);
+    console.error('This is required to write build-info.json files.');
+    process.exit(1);
+  }
 }
 
 // Build absolute paths based on working directory
