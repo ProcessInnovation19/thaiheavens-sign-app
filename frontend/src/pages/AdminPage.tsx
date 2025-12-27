@@ -101,34 +101,8 @@ export default function AdminPage() {
     }
   };
 
-  const handlePageClick = (page: number, canvasX: number, canvasY: number, pdfX?: number, pdfY?: number) => {
+  const handlePageClick = (page: number) => {
     setSelectedPage(page);
-    // For display on canvas (scale 1.5)
-    const displayWidth = 200;
-    const displayHeight = 100;
-    // PDF dimensions (scale 1.0)
-    const pdfWidth = displayWidth / 1.5;
-    const pdfHeight = displayHeight / 1.5;
-    
-    // Center the box on the click position (subtract half width/height)
-    const boxX = canvasX - displayWidth / 2;
-    const boxY = canvasY - displayHeight / 2;
-    
-    // For PDF coordinates, also center (subtract half width/height)
-    const pdfBoxX = (pdfX ?? canvasX / 1.5) - pdfWidth / 2;
-    const pdfBoxY = (pdfY ?? canvasY / 1.5) - pdfHeight / 2;
-    
-    setSelectedPosition({ 
-      x: boxX, // Canvas coordinates for visual box (centered)
-      y: boxY, // Canvas coordinates for visual box (centered)
-      width: displayWidth, // Canvas width for visual box
-      height: displayHeight, // Canvas height for visual box
-      // Store PDF coordinates for backend (scale 1.0, centered)
-      pdfX: pdfBoxX,
-      pdfY: pdfBoxY,
-      pdfWidth: pdfWidth,
-      pdfHeight: pdfHeight,
-    });
   };
 
   const handleCreateSession = async () => {
@@ -141,11 +115,22 @@ export default function AdminPage() {
       setLoading(true);
       setError(null);
       
-      // Use PDF coordinates for backend (scale 1.0), fallback to canvas coordinates if not available
-      const pdfX = selectedPosition.pdfX ?? selectedPosition.x / 1.5;
-      const pdfY = selectedPosition.pdfY ?? selectedPosition.y / 1.5;
-      const pdfWidth = selectedPosition.pdfWidth ?? selectedPosition.width / 1.5;
-      const pdfHeight = selectedPosition.pdfHeight ?? selectedPosition.height / 1.5;
+      // Use PDF coordinates for backend (scale 1.0). These are provided by PDFViewer via onPositionUpdate.
+      if (
+        selectedPosition.pdfX === undefined ||
+        selectedPosition.pdfY === undefined ||
+        selectedPosition.pdfWidth === undefined ||
+        selectedPosition.pdfHeight === undefined
+      ) {
+        setError('Position data is missing. Please click on the PDF again to set the signature box.');
+        setLoading(false);
+        return;
+      }
+
+      const pdfX = selectedPosition.pdfX;
+      const pdfY = selectedPosition.pdfY;
+      const pdfWidth = selectedPosition.pdfWidth;
+      const pdfHeight = selectedPosition.pdfHeight;
 
       const result = await createSession({
         pdfId,

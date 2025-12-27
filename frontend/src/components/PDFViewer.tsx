@@ -226,7 +226,8 @@ export default function PDFViewer({
                 
                 // Convert to PDF coordinates (scale 1.0)
                 const displayScale = pageInfo.viewport.scale || 1;
-                const pdfScaleRatio = 1.0 / displayScale;
+                const qualityScale = pageInfo.canvas && pageInfo.viewport.width ? (pageInfo.canvas.width / pageInfo.viewport.width) : 1;
+                const pdfScaleRatio = 1.0 / (displayScale * qualityScale);
                 const pdfWidth = defaultWidth * pdfScaleRatio;
                 const pdfHeight = defaultHeight * pdfScaleRatio;
                 const pdfBoxX = boxX * pdfScaleRatio;
@@ -364,7 +365,8 @@ export default function PDFViewer({
       // Convert to PDF coordinates and update
       if (onPositionUpdate) {
         const pageInfo = pagesRef.current[currentPage - 1];
-        const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
+        const qualityScale = pageInfo.canvas && pageInfo.viewport.width ? (pageInfo.canvas.width / pageInfo.viewport.width) : 1;
+        const pdfScaleRatio = 1.0 / ((pageInfo.viewport.scale || 1) * qualityScale);
         const pdfX = newX * pdfScaleRatio;
         // PDF coordinates - use newY directly (like AdminPage does)
         const pdfY = (newY * pdfScaleRatio);
@@ -426,7 +428,8 @@ export default function PDFViewer({
       // Convert to PDF coordinates and update
       if (onPositionUpdate) {
         const pageInfo = pagesRef.current[currentPage - 1];
-        const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
+        const qualityScale = pageInfo.canvas && pageInfo.viewport.width ? (pageInfo.canvas.width / pageInfo.viewport.width) : 1;
+        const pdfScaleRatio = 1.0 / ((pageInfo.viewport.scale || 1) * qualityScale);
         const pdfX = selectedPosition.x * pdfScaleRatio;
         // PDF coordinates - use selectedPosition.y directly (like AdminPage does)
         const pdfY = (selectedPosition.y * pdfScaleRatio);
@@ -465,12 +468,16 @@ export default function PDFViewer({
       return { x: 0, y: 0, width: 0, height: 0 };
     }
     
-    const pdfViewport = pageInfo.page.getViewport({ scale: 1 });
-    const scaleFactor = pdfViewport.width / pageInfo.viewport.width;
+    // Important: we render the canvas at higher resolution (qualityScale),
+    // so canvas coordinates must be converted using the *render* scale, not the display scale.
+    const qualityScale = pageInfo.canvas && pageInfo.viewport.width ? (pageInfo.canvas.width / pageInfo.viewport.width) : 1;
+    const renderScale = (pageInfo.viewport.scale || 1) * qualityScale;
+    const scaleFactor = 1 / renderScale;
     
     return {
       x: canvasX * scaleFactor,
-      y: (pageInfo.viewport.height - canvasY - canvasHeight) * scaleFactor,
+      // canvasY is top-left; PDF uses bottom-left
+      y: ((pageInfo.viewport.height * qualityScale) - canvasY - canvasHeight) * scaleFactor,
       width: canvasWidth * scaleFactor,
       height: canvasHeight * scaleFactor,
     };
@@ -547,6 +554,9 @@ export default function PDFViewer({
                   setCurrentPage(currentPage - 1);
                   // Reset selected position when changing page
                   if (onPositionUpdate) {
+                    const pageInfo = pagesRef.current[currentPage - 2];
+                    const qualityScale = pageInfo?.canvas && pageInfo?.viewport?.width ? (pageInfo.canvas.width / pageInfo.viewport.width) : 1;
+                    const pdfScaleRatio = 1.0 / ((pageInfo?.viewport?.scale || 1) * qualityScale);
                     onPositionUpdate({
                       x: 0,
                       y: 0,
@@ -554,8 +564,8 @@ export default function PDFViewer({
                       height: 100,
                       pdfX: 0,
                       pdfY: 0,
-                      pdfWidth: 200 / (pagesRef.current[currentPage - 2]?.viewport?.scale || 1),
-                      pdfHeight: 100 / (pagesRef.current[currentPage - 2]?.viewport?.scale || 1),
+                      pdfWidth: 200 * pdfScaleRatio,
+                      pdfHeight: 100 * pdfScaleRatio,
                     });
                   }
                 }
@@ -575,7 +585,8 @@ export default function PDFViewer({
                   // Reset selected position when changing page
                   if (onPositionUpdate && pagesRef.current[currentPage]) {
                     const pageInfo = pagesRef.current[currentPage];
-                    const pdfScaleRatio = 1.0 / (pageInfo.viewport.scale || 1);
+                    const qualityScale = pageInfo.canvas && pageInfo.viewport.width ? (pageInfo.canvas.width / pageInfo.viewport.width) : 1;
+                    const pdfScaleRatio = 1.0 / ((pageInfo.viewport.scale || 1) * qualityScale);
                     onPositionUpdate({
                       x: 0,
                       y: 0,

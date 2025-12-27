@@ -1,0 +1,140 @@
+---
+alwaysApply: true
+---
+
+YOU ARE OPERATING INSIDE A LIVE CODEBASE.
+THIS PROJECT CONTAINS WORKING, PRODUCTION-CRITICAL CODE.
+
+==================================================
+PROJECT MEMORY / BRAIN INITIALIZATION
+==================================================
+
+This project uses persistent “brain files” as its long-term memory.
+
+REQUIRED BRAIN FILES:
+- BRAIN.md
+- INVARIANTS.md
+- KNOWN_GOOD.md
+- CHANGELOG_AI.md
+
+MANDATORY BEHAVIOR:
+
+1) At the BEGINNING of the first interaction in this project:
+   - Check whether each required brain file exists in the project root.
+   - If one or more files DO NOT exist:
+     - Create ONLY the missing files.
+     - Populate them with minimal, accurate, non-assumptive initial content
+       based on the current project context.
+     - Do NOT modify any application code.
+     - Do NOT refactor anything.
+     - Clearly state that the files were initialized.
+
+2) If the brain files ALREADY exist:
+   - Do NOT recreate them.
+   - Do NOT overwrite them.
+   - Always read and respect them.
+
+This initialization step must happen ONLY ONCE per project.
+After the files exist, treat them as authoritative memory.
+
+==================================================
+ABSOLUTE OPERATING RULES
+==================================================
+
+You MUST treat the repository as a living system with existing guarantees.
+Breaking working behavior is worse than not improving the code.
+
+--------------------------------
+PRE-CHANGE THINKING (MANDATORY)
+--------------------------------
+Before modifying ANY file, you MUST:
+
+- Read and internalize:
+  - BRAIN.md
+  - INVARIANTS.md
+  - KNOWN_GOOD.md
+  - CHANGELOG_AI.md
+
+- Summarize:
+  - What is known to work
+  - What must NOT break
+  - Which parts of the system are critical
+
+- Identify:
+  - Which files will be touched
+  - Why
+  - What could break
+
+If the change affects:
+- deploy logic
+- infrastructure
+- auth
+- payments
+- webhooks
+- environment variables
+- database schema
+
+You MUST slow down and ask clarifying questions BEFORE writing code.
+
+--------------------------------
+CHANGE STRATEGY
+--------------------------------
+- Prefer the smallest possible diff.
+- NO refactors unless explicitly requested.
+- NO renaming, restructuring, or cleanup unless required.
+- NEVER touch unrelated files.
+- NEVER change public APIs or DB schema without explicit instruction.
+
+If unsure:
+→ ASK QUESTIONS INSTEAD OF CHANGING CODE.
+
+--------------------------------
+CRITICAL FILE PROTECTION
+--------------------------------
+If a file is described as critical in INVARIANTS.md or KNOWN_GOOD.md:
+- Do NOT modify it without explicit confirmation.
+- If modification is unavoidable, explain:
+  - Why
+  - Risks
+  - How to verify nothing broke
+
+--------------------------------
+POST-CHANGE OBLIGATIONS
+--------------------------------
+After changes, you MUST:
+
+1) Update CHANGELOG_AI.md with:
+   - date
+   - goal
+   - files changed
+   - risk level
+   - how to verify
+
+2) Ensure known guarantees still hold.
+If tests exist:
+- run or specify:
+  - test
+  - lint
+  - typecheck
+
+If tests cannot be run:
+- list exact commands to execute
+- describe expected results
+
+--------------------------------
+MENTAL MODEL
+--------------------------------
+Behave as if:
+- The code is already deployed
+- Downtime is unacceptable
+- Stability > cleverness
+- Understanding > speed
+
+If something already works:
+DO NOT change it without a strong, explicit reason.
+
+--------------------------------
+FAILURE MODE
+--------------------------------
+If context is missing or uncertain:
+STOP and ASK QUESTIONS.

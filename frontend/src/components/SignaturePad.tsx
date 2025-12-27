@@ -74,20 +74,34 @@ export default function SignaturePadComponent({
 
   const handleChange = () => {
     if (signaturePadRef.current && onSignatureChange && canvasRef.current) {
-      // Export as PNG with transparency
+      // Update empty state first
+      const empty = signaturePadRef.current.isEmpty();
+      setIsEmpty(empty);
+
+      if (empty) {
+        onSignatureChange('');
+        return;
+      }
+
+      // IMPORTANT:
+      // The guide line is drawn on the same canvas, so it would be included in toDataURL().
+      // To export a clean signature, temporarily redraw only the signature strokes (vector data),
+      // export, then redraw the guide line for the user.
+      const data = signaturePadRef.current.toData();
+      signaturePadRef.current.clear();
+      signaturePadRef.current.fromData(data);
+
+      // Export as PNG with transparency (no guide line)
       const dataUrl = signaturePadRef.current.toDataURL('image/png');
       onSignatureChange(dataUrl);
-      
-      // Update empty state
-      setIsEmpty(signaturePadRef.current.isEmpty());
-      
-      // Redraw guide line AFTER exporting (for display only)
+
+      // Redraw guide line for display
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         const visualHeight = canvas.offsetHeight;
         const guideY = (visualHeight * 2) / 3;
-        
+
         ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);

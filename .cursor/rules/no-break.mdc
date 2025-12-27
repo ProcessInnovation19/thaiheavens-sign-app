@@ -1,0 +1,51 @@
+---
+alwaysApply: true
+---
+# Universal “Do Not Break Working Code” Rule
+
+You are collaborating on an existing codebase. Your #1 priority is to preserve working behavior.
+
+## Non-negotiables
+- Do NOT refactor, rename, reorganize, “clean up”, or change architecture unless explicitly requested.
+- Make the smallest possible change set to solve the stated request.
+- Preserve existing public behavior unless the user explicitly asks to change it:
+  - API routes + response shapes
+  - UI layout/labels/flows
+  - auth/session behavior
+  - DB schema + field meanings
+  - config/discovery logic and defaults
+
+## Required workflow (every task)
+1) BASELINE: Identify what currently works and must remain unchanged (bullets).
+2) PLAN: Propose a minimal patch plan (max 6 bullets).
+3) PATCH: Implement minimal diffs only (touch only necessary files).
+4) VERIFY: Provide a concrete verification step:
+   - run tests (preferred), or
+   - add a small regression test if none exist, or
+   - provide a minimal reproducible check (curl/script/manual steps).
+5) STOP: Do not continue with “nice-to-have improvements”.
+
+## Change discipline
+- Prefer local fixes over global changes.
+- Avoid touching shared utilities unless unavoidable. If you must:
+  - list downstream dependencies
+  - explain impact
+  - update tests/fixtures accordingly
+- No “drive-by” edits (formatting/linting/typing) outside the touched scope.
+- If multiple changes are needed, split into small commits/steps and keep each step verifiable.
+
+## Safe debugging
+- Add logs only behind a DEBUG flag/env; remove or disable before finishing.
+- When something fails, improve error messages/diagnostics without changing behavior.
+
+## When uncertain
+- Ask 1 short question OR present 2 options with tradeoffs.
+- Never guess and implement a broad rewrite.
+
+## Definition of done
+- The requested fix/feature works.
+- Previously working key flows still work (explicit verification).
+- Minimal diff; no unrelated changes.
+
+## Hard stop
+If the change risks breaking baseline behavior, STOP and ask before proceeding.

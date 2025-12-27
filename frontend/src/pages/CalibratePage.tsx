@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PDFViewer from '../components/PDFViewer';
 import SignaturePadComponent from '../components/SignaturePad';
 import { uploadPdf } from '../services/api';
@@ -12,6 +12,13 @@ export default function CalibratePage() {
     canvasY: number;
     pdfX: number;
     pdfY: number;
+  } | null>(null);
+  const [basePdfBox, setBasePdfBox] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    page: number;
   } | null>(null);
   const [testBox, setTestBox] = useState<{
     x: number;
@@ -85,58 +92,30 @@ export default function CalibratePage() {
     }
   };
 
-  const handlePageClick = (page: number, canvasX: number, canvasY: number, pdfX?: number, pdfY?: number) => {
+  const handlePageClick = (page: number, _canvasX: number, _canvasY: number, _pdfX?: number, _pdfY?: number) => {
     setSelectedPage(page);
-    
-    // Store click position (center point)
-    setClickPosition({
-      canvasX,
-      canvasY,
-      pdfX: pdfX ?? canvasX / 1.5,
-      pdfY: pdfY ?? canvasY / 1.5,
-    });
-
-    // Calculate test box dimensions proportional to viewport
-    // Use a fixed aspect ratio (2:1) but scale based on viewport size
-    const aspectRatio = 2; // width:height = 2:1
-    let displayWidth: number;
-    let displayHeight: number;
-    
-    if (viewportSize) {
-      // Make box proportional to viewport (e.g., 20% of viewport width)
-      displayWidth = viewportSize.width * 0.2;
-      displayHeight = displayWidth / aspectRatio;
-      
-      // Ensure minimum and maximum sizes
-      displayWidth = Math.max(100, Math.min(displayWidth, 300));
-      displayHeight = displayWidth / aspectRatio;
-    } else {
-      // Fallback to fixed size if viewport not available
-      displayWidth = 200;
-      displayHeight = 100;
-    }
-    
-    const pdfWidth = displayWidth / 1.5;
-    const pdfHeight = displayHeight / 1.5;
-
-    // Center the box on the click position
-    const adjustedPdfX = ((pdfX ?? canvasX / 1.5) - pdfWidth / 2) * calibrationParams.scaleX + calibrationParams.offsetX;
-    const adjustedPdfY = ((pdfY ?? canvasY / 1.5) - pdfHeight / 2) * calibrationParams.scaleY + calibrationParams.offsetY;
-
-    // Convert back to canvas coordinates for display (centered)
-    const adjustedCanvasX = adjustedPdfX * 1.5;
-    const adjustedCanvasY = adjustedPdfY * 1.5;
-
-    setTestBox({
-      x: adjustedCanvasX,
-      y: adjustedCanvasY,
-      width: displayWidth,
-      height: displayHeight,
-    });
   };
 
+  // Keep the visual test box in sync when calibration sliders change
+  useEffect(() => {
+    if (!basePdfBox) return;
+    const devicePixelRatio = window.devicePixelRatio || 2;
+    const qualityScale = Math.max(2, devicePixelRatio);
+    const renderScale = (viewportSize?.scale || 1) * qualityScale;
+
+    const adjustedPdfX = basePdfBox.x * calibrationParams.scaleX + calibrationParams.offsetX;
+    const adjustedPdfY = basePdfBox.y * calibrationParams.scaleY + calibrationParams.offsetY;
+
+    setTestBox({
+      x: adjustedPdfX * renderScale,
+      y: adjustedPdfY * renderScale,
+      width: basePdfBox.width * renderScale,
+      height: basePdfBox.height * renderScale,
+    });
+  }, [basePdfBox, calibrationParams, viewportSize]);
+
   const handleTestSignature = async () => {
-    if (!pdfId || !clickPosition || !testBox) {
+    if (!pdfId || !basePdfBox) {
       setError('Please click on the PDF first');
       return;
     }
@@ -150,11 +129,10 @@ export default function CalibratePage() {
       setLoading(true);
       setError(null);
 
-      // Use the testBox dimensions (which are already scaled proportionally)
-      const pdfWidth = testBox.width / 1.5;
-      const pdfHeight = testBox.height / 1.5;
-      const adjustedPdfX = (clickPosition.pdfX - pdfWidth / 2) * calibrationParams.scaleX + calibrationParams.offsetX;
-      const adjustedPdfY = (clickPosition.pdfY - pdfHeight / 2) * calibrationParams.scaleY + calibrationParams.offsetY;
+      const pdfWidth = basePdfBox.width;
+      const pdfHeight = basePdfBox.height;
+      const adjustedPdfX = basePdfBox.x * calibrationParams.scaleX + calibrationParams.offsetX;
+      const adjustedPdfY = basePdfBox.y * calibrationParams.scaleY + calibrationParams.offsetY;
 
       // Call backend to generate test PDF
       const response = await fetch('/api/calibrate/test-pdf', {
@@ -164,7 +142,7 @@ export default function CalibratePage() {
         },
         body: JSON.stringify({
           pdfId,
-          page: selectedPage - 1,
+          page: basePdfBox.page,
           x: adjustedPdfX,
           y: adjustedPdfY,
           width: pdfWidth,
@@ -428,19 +406,36 @@ export default function CalibratePage() {
                   selectedPosition={testBox || undefined}
                   onViewportReady={setViewportSize}
                   onPositionUpdate={(position) => {
-                    setTestBox({
-                      x: position.x,
-                      y: position.y,
-                      width: position.width,
-                      height: position.height,
+                    // Base (uncalibrated) PDF box from viewer
+                    setBasePdfBox({
+                      x: position.pdfX,
+                      y: position.pdfY,
+                      width: position.pdfWidth,
+                      height: position.pdfHeight,
+                      page: selectedPage - 1,
                     });
-                    if (clickPosition) {
-                      setClickPosition({
-                        ...clickPosition,
-                        pdfX: position.pdfX,
-                        pdfY: position.pdfY,
-                      });
-                    }
+
+                    // Compute calibrated box for visual overlay using current viewport scale.
+                    const devicePixelRatio = window.devicePixelRatio || 2;
+                    const qualityScale = Math.max(2, devicePixelRatio);
+                    const renderScale = (viewportSize?.scale || 1) * qualityScale;
+
+                    const adjustedPdfX = position.pdfX * calibrationParams.scaleX + calibrationParams.offsetX;
+                    const adjustedPdfY = position.pdfY * calibrationParams.scaleY + calibrationParams.offsetY;
+
+                    setTestBox({
+                      x: adjustedPdfX * renderScale,
+                      y: adjustedPdfY * renderScale,
+                      width: position.pdfWidth * renderScale,
+                      height: position.pdfHeight * renderScale,
+                    });
+
+                    setClickPosition({
+                      canvasX: position.x,
+                      canvasY: position.y,
+                      pdfX: position.pdfX,
+                      pdfY: position.pdfY,
+                    });
                   }}
                 />
               ) : (
